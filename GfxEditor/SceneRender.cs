@@ -1,9 +1,8 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using ImGuiNET;
+using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using System.Threading;
-using static System.Net.Mime.MediaTypeNames;
 
-namespace ImGuiNET.OpenTK.Sample;
+namespace GfxEditor;
 
 internal class SceneRender : IDisposable
 {

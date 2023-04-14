@@ -1,6 +1,6 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL;
 
-namespace ImGuiNET.OpenTK.Sample;
+namespace GfxEditor;
 
 class Program
 {

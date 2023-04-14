@@ -2,7 +2,7 @@
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 
-namespace ImGuiNET.OpenTK.Sample;
+namespace GfxEditor;
 
 public struct Vertex
 {

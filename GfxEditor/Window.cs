@@ -1,10 +1,11 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using System.Runtime.InteropServices;
+using ImGuiNET;
+using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using System.Runtime.InteropServices;
 
-namespace ImGuiNET.OpenTK.Sample;
+namespace GfxEditor;
 
 public class Window : GameWindow
 {
