@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using ImGuiNET;
+using Nez.ImGuiTools;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -59,6 +60,9 @@ public class Window : GameWindow
         _controller.WindowResized(ClientSize.X, ClientSize.Y);
     }
 
+    private bool _showGameDirModal = false;
+    private bool _showOpenGfxModal = false;
+
     protected override void OnRenderFrame(FrameEventArgs e)
     {
         base.OnRenderFrame(e);
@@ -80,10 +84,14 @@ public class Window : GameWindow
                 // Do something.
             }
 
-            // Add an open item to the file menu.
-            if (ImGui.MenuItem("Open"))
+            if (ImGui.MenuItem("Open Game Directory..."))
             {
-                // Do something.
+                _showGameDirModal = true;
+            }
+
+            if (ImGui.MenuItem("Open GFX 3DI..."))
+            {
+                _showOpenGfxModal = true;
             }
 
             // Add a save item to the file menu.
@@ -112,6 +120,45 @@ public class Window : GameWindow
 
         Error.Check();
         _controller.EndDockspace();
+
+        if (_showGameDirModal)
+        {
+            ImGui.OpenPopup("file-open-GameDir");
+
+            if (ImGui.BeginPopupModal("file-open-GameDir", ref _showGameDirModal, ImGuiWindowFlags.NoTitleBar))
+            {
+                var picker = FilePicker.GetFolderPicker(this, Path.Combine(Environment.CurrentDirectory));
+                if (picker.Draw())
+                {
+                    Console.WriteLine(picker.SelectedFile);
+                    FilePicker.RemoveFilePicker(this);
+                }
+                ImGui.EndPopup();
+            }
+
+            if (!ImGui.IsPopupOpen("file-open-GameDir"))
+                _showGameDirModal = false;
+        }
+
+        if (_showOpenGfxModal)
+        {
+            ImGui.OpenPopup("file-open-GfxModal");
+
+            if (ImGui.BeginPopupModal("file-open-GfxModal", ref _showOpenGfxModal, ImGuiWindowFlags.NoTitleBar))
+            {
+                var startingPath = @"D:\Installed Games\Delta Force 2";
+                var picker = FilePicker.GetFilePicker(this, startingPath, ".3di");
+                if (picker.Draw())
+                {
+                    Console.WriteLine(picker.SelectedFile);
+                    FilePicker.RemoveFilePicker(this);
+                }
+                ImGui.EndPopup();
+            }
+
+            if (!ImGui.IsPopupOpen("file-open-GfxModal"))
+                _showOpenGfxModal = false;
+        }
 
         _controller.Render();
 
