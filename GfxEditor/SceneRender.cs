@@ -9,7 +9,7 @@ internal class SceneRender : IDisposable
     // https://learnopengl.com/Advanced-OpenGL/Framebuffers
     // https://stackoverflow.com/questions/9261942/opentk-c-sharp-roatating-cube-example
 
-    private TriangleDrawer _drawer;
+    private IModelDrawer _drawer;
 
     int fbo;
     int rbo;
@@ -18,9 +18,9 @@ internal class SceneRender : IDisposable
     Vector2i fboSize = default;
     private readonly Window window;
 
-    public SceneRender(Window window)
+    public SceneRender(Window window, IModelDrawer drawer)
     {
-        _drawer = new();
+        _drawer = drawer;
         _drawer.OnLoad();
 
         this.window = window;
@@ -28,7 +28,7 @@ internal class SceneRender : IDisposable
 
     public void DrawViewportWindow()
     {
-        Error.Check();
+        GlError.Check();
         // https://gamedev.stackexchange.com/a/140704
 
         ImGui.Begin("GameWindow");
@@ -96,7 +96,7 @@ internal class SceneRender : IDisposable
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, rbo);
             }
 
-            Error.Check();
+            GlError.Check();
             GL.Viewport(0,0, wsizei.X, wsizei.Y); // change the viewport to window
 
             // actually draw the scene
@@ -104,7 +104,7 @@ internal class SceneRender : IDisposable
                 //Draw triangle
                 _drawer.OnResize(wsizei.X, wsizei.Y);
                 _drawer.OnRenderFrame();
-                Error.Check();
+                GlError.Check();
             }
 
             // unbind our bo so nothing else uses it
@@ -112,14 +112,14 @@ internal class SceneRender : IDisposable
 
             GL.Viewport(0, 0, window.ClientSize.X, window.ClientSize.Y); // back to full screen size
 
-            Error.Check();
+            GlError.Check();
             // Because I use the texture from OpenGL, I need to invert the V from the UV.
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, texColor);
             //ImGui.Image(new IntPtr(texColor), wsize, Vector2.UnitY, Vector2.UnitX);
             ImGui.Image(new IntPtr(texColor), wsize);
 
-            Error.Check();
+            GlError.Check();
             ImGui.EndChild();
         }
         ImGui.End();

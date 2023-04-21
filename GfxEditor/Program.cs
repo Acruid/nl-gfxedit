@@ -1,24 +1,12 @@
-﻿using OpenTK.Graphics.OpenGL;
+﻿namespace GfxEditor;
 
-namespace GfxEditor;
-
-class Program
+internal static class Program
 {
-    static void Main()
+    private static void Main()
     {
-        Window wnd = new Window();
+        var editor = new GfxEdit();
+
+        Window wnd = new Window(editor);
         wnd.Run();
-    }
-}
-
-static class Error
-{
-    public static void Check()
-    {
-        ErrorCode errorCode = GL.GetError();
-        if (errorCode != ErrorCode.NoError)
-        {
-            throw new InvalidOperationException();
-        }
     }
 }

@@ -8,13 +8,19 @@ using OpenTK.Windowing.Desktop;
 
 namespace GfxEditor;
 
-public class Window : GameWindow
+/// <summary>
+/// The MDI root OpenGL window that contains the program UI.
+/// </summary>
+internal class Window : GameWindow
 {
+    private readonly GfxEdit _gfxEdit;
     ImGuiController _controller;
     SceneRender _scene;
 
-    public Window() : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3) })
-    { }
+    public Window(GfxEdit gfxEdit) : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3) })
+    {
+        _gfxEdit = gfxEdit;
+    }
 
     private static DebugProc _debugProcCallback = DebugCallback;
     private static GCHandle _debugProcCallbackHandle;
@@ -45,8 +51,8 @@ public class Window : GameWindow
         VSync = VSyncMode.On;
 
         _controller = new ImGuiController(ClientSize.X, ClientSize.Y);
-        _scene = new SceneRender(this);
-        Error.Check();
+        _scene = new SceneRender(this, new TriangleDrawer());
+        GlError.Check();
     }
 
     protected override void OnResize(ResizeEventArgs e)
@@ -112,13 +118,13 @@ public class Window : GameWindow
 
         _controller.StartDockspace();
 
-        Error.Check();
+        GlError.Check();
         ImGui.ShowDemoWindow();
 
-        Error.Check();
+        GlError.Check();
         _scene.DrawViewportWindow();
 
-        Error.Check();
+        GlError.Check();
         _controller.EndDockspace();
 
         if (_showGameDirModal)
@@ -151,6 +157,7 @@ public class Window : GameWindow
                 if (picker.Draw())
                 {
                     Console.WriteLine(picker.SelectedFile);
+                    _gfxEdit.LoadFile(new FileInfo(picker.SelectedFile));
                     FilePicker.RemoveFilePicker(this);
                 }
                 ImGui.EndPopup();

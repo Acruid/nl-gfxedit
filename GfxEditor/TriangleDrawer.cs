@@ -44,8 +44,6 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     };
     */
 
-
-
     public void OnLoad()
     {
         // Create Vertex Buffer Object
