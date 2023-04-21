@@ -18,7 +18,7 @@ public struct Vertex
     }
 }
 
-public sealed class RotatingCubeDrawer
+public sealed class RotatingCubeDrawer : IModelDrawer
 {
     private int _width;
     private int _height;
@@ -205,7 +205,7 @@ public sealed class RotatingCubeDrawer
         GL.PatchParameter(PatchParameterInt.PatchVertices, 3);
     }
 
-    public void OnClosed()
+    public void OnUnload()
     {
         GL.DeleteVertexArray(_vertexArray);
         GL.DeleteBuffer(_buffer);
@@ -238,6 +238,9 @@ public sealed class RotatingCubeDrawer
 
     public void OnRenderFrame()
     {
+        GL.ClearColor(Color4.DimGray);
+        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
         var timeStamp = Stopwatch.GetTimestamp();
         _angle += (float)((timeStamp - _lastTimestamp) / (double)_freq);
         _lastTimestamp = timeStamp;

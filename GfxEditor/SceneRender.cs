@@ -9,7 +9,7 @@ internal class SceneRender : IDisposable
     // https://learnopengl.com/Advanced-OpenGL/Framebuffers
     // https://stackoverflow.com/questions/9261942/opentk-c-sharp-roatating-cube-example
 
-    private RotatingCubeDrawer _drawer;
+    private TriangleDrawer _drawer;
 
     int fbo;
     int rbo;
@@ -101,9 +101,6 @@ internal class SceneRender : IDisposable
 
             // actually draw the scene
             {
-                GL.ClearColor(Color4.DimGray);
-                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
                 //Draw triangle
                 _drawer.OnResize(wsizei.X, wsizei.Y);
                 _drawer.OnRenderFrame();
@@ -130,7 +127,7 @@ internal class SceneRender : IDisposable
 
     public void Dispose()
     {
-        _drawer.OnClosed();
+        _drawer.OnUnload();
         GL.DeleteFramebuffer(fbo);
     }
 }
