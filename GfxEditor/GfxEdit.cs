@@ -4,12 +4,14 @@ internal class GfxEdit
 {
     public event EventHandler? FileUpdated;
 
+    public FileInfo? OpenFileInfo { get; private set; }
     public File3di OpenedFile { get; private set; } = new();
 
     public int ActiveLod { get; set; }
 
     public void NewFile()
     {
+        OpenFileInfo = null;
         OpenedFile = new File3di();
         FileDirty();
     }
@@ -21,6 +23,7 @@ internal class GfxEdit
 
         OpenedFile = new File3di();
 
+        OpenFileInfo = fileInfo;
         using var stream = fileInfo.OpenRead();
         using var reader = new BinaryReader(stream);
         OpenedFile.ReadFile(reader);
