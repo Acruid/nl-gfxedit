@@ -6,6 +6,8 @@ internal class GfxEdit
 
     public File3di OpenedFile { get; private set; } = new();
 
+    public int ActiveLod { get; set; }
+
     public void NewFile()
     {
         OpenedFile = new File3di();
@@ -14,9 +16,14 @@ internal class GfxEdit
 
     public void LoadFile(FileInfo fileInfo)
     {
-        //TODO: Load file
+        if (!fileInfo.Exists)
+            return;
 
         OpenedFile = new File3di();
+
+        using var stream = fileInfo.OpenRead();
+        using var reader = new BinaryReader(stream);
+        OpenedFile.ReadFile(reader);
         FileDirty();
     }
 

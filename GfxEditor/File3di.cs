@@ -8,21 +8,21 @@ namespace GfxEditor;
 
 public sealed class File3di
 {
-    private HEADER _header;
+    public HEADER _header;
 
-    private List<TEXTURE> _textures;
-    private List<byte[]> _bmLines;
-    private List<RGBA[]> _palettes;
+    public List<TEXTURE> _textures;
+    public List<byte[]> _bmLines;
+    public List<RGBA[]> _palettes;
 
-    private List<ModelLodHeader> _lodHeaders;
-    private List<VECTOR4[]> _lodPositions;
-    private List<VECTOR4[]> _lodNormals;
-    private List<ModelFace[]> _lodFaces;
-    private List<ModelSubObject[]> _lodSubObjects;
-    private List<ModelBoneAnim[]> _lodBoneAnim;
-    private List<ModelMaterial[]> _lodMaterials;
-    private List<COL_PLANE[]> _lodColPlanes;
-    private List<COL_VOLUME[]> _lodColVolumes;
+    public List<ModelLodHeader> _lodHeaders;
+    public List<VECTOR4[]> _lodPositions;
+    public List<VECTOR4[]> _lodNormals;
+    public List<ModelFace[]> _lodFaces;
+    public List<ModelSubObject[]> _lodSubObjects;
+    public List<ModelBoneAnim[]> _lodBoneAnim;
+    public List<ModelMaterial[]> _lodMaterials;
+    public List<COL_PLANE[]> _lodColPlanes;
+    public List<COL_VOLUME[]> _lodColVolumes;
 
     public File3di()
     {
@@ -131,6 +131,35 @@ public sealed class File3di
             writer.Write(materials[i].AsSpan().AsBytes());
         }
     }
+
+    #region Utility
+    public int FaceOffset(int lod, int n)
+    {
+        if (n <= 0)
+            return 0;
+
+        var Bones = _lodSubObjects[lod];
+        var off = 0;
+        for (var i = 0; i < n; i++)
+            off += Bones[i].nFaces;
+
+        return off;
+    }
+
+    public int VecOffset(int lod, int n)
+    {
+        if (n <= 0)
+            return 0;
+
+        var Bones = _lodSubObjects[lod];
+        var off = 0;
+        for (var i = 0; i < n; i++)
+            off += Bones[i].nVerts;
+
+        return off;
+    }
+
+    #endregion
 
     #region Binary Structs
 
@@ -272,14 +301,15 @@ public sealed class File3di
 
         private fixed uint null0[7]; //
 
-        public byte IndexG; // index of texture to use
-        private readonly byte IndexB; // index of texture to use
-        private readonly byte IndexW; // index of texture to use
-        private readonly byte IndexA; //
+        private fixed byte texIndex[4]; // index of texture to use
+        public byte TexIndex(CamoColor camo) => texIndex[(byte) camo];
+
+        //public byte IndexG; // index of texture to use
+        //private readonly byte IndexB; // index of texture to use
+        //private readonly byte IndexW; // index of texture to use
+        //private readonly byte IndexA; //
 
         private fixed uint null1[16]; //
-
-        public byte TexIndex => IndexG;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -303,10 +333,9 @@ public sealed class File3di
         private int diffZoff; //v,w VecZOff - parentBone.VecZoff
 
         //v,r if(lodheader.Flags & 1)foreach vert in group, vec.x -= (VecXoff >> 8)
-        private int VecXoff; //v,r
-
-        private int VecYoff; //v,r same as above for y
-        private int VecZoff; //v,r same as above for z
+        public int VecXoff; //v,r
+        public int VecYoff; //v,r same as above for y
+        public int VecZoff; //v,r same as above for z
 
         private fixed int GAP_1[12];
     }
@@ -382,6 +411,14 @@ public sealed class File3di
     {
         NONE = 0x0,
         GENERIC = 0x676E7263 //"crng"
+    }
+
+    public enum CamoColor : byte
+    {
+        Green = 0,
+        Brown = 1,
+        White = 2,
+        Alpha = 3
     }
 
     private static ReadOnlySpan<byte> CleanString(ReadOnlySpan<byte> span)

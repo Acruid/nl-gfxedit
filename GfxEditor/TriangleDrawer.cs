@@ -21,6 +21,9 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     private int _vertexArrayObject;
     private Shader _shader;
 
+    private int _mvpShaderLoc;
+    private Matrix4 _mvpMatrix;
+
     private int _numVertices;
     private readonly Vertex[] _vertices = new Vertex[BatchSize];
 
@@ -68,12 +71,14 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     layout (location = 0) in vec3 aPosition;
     layout (location = 1) in vec4 aColor;
 
+    uniform mat4 uMVP;
+
     out vec4 vColor;
 
     void main()
     {
-        gl_Position = vec4(aPosition, 1.0);
         vColor = aColor;
+        gl_Position = uMVP * vec4(aPosition, 1.0);
     }
 ";
 
@@ -92,6 +97,7 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
 
         _shader = new Shader(vertexShaderSource, fragmentShaderSource);
         _shader.Use();
+        _mvpShaderLoc = GL.GetUniformLocation(_shader.Handle, "uMVP");
     }
 
     public void OnUnload()
@@ -110,12 +116,19 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         _height = height;
 
         GL.Viewport(0, 0, _width, _height);
+
+        float aspectRatio = (float)width / height;
+        Matrix4 _model = Matrix4.Identity;
+        Matrix4 _view = Matrix4.LookAt(new Vector3(12, 12, 3), new Vector3(0, 0, 0), new Vector3(0, 0, 1));
+        Matrix4 _projection = Matrix4.CreatePerspectiveFieldOfView(60 * MathF.PI / 180.0f, aspectRatio, 0.1f, 100.0f);
+        _mvpMatrix = _model * _view * _projection;
+        //_mvpMatrix = Matrix4.CreateOrthographicOffCenter(0.0f, 800.0f, 0.0f, 600.0f, 0.1f, 500.0f);
     }
 
     public void OnRenderFrame()
     {
         // Set clear color
-        GL.ClearColor(Color4.Black);
+        GL.ClearColor(Color4.Green);
 
         // set the winding mode to clockwise
         GL.FrontFace(FrontFaceDirection.Cw);
@@ -123,19 +136,31 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         // Clear the screen
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
+        _shader.Use();
+
+        GL.UniformMatrix4(_mvpShaderLoc, false, ref _mvpMatrix);
+
         // Update vertex data
         GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBufferObject);
         GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<Vertex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
         GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _vertices.Length * Marshal.SizeOf<Vertex>(), _vertices);
 
         // Enable blending
-        GL.Enable(EnableCap.Blend);
+        //GL.Enable(EnableCap.Blend);
         //GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
+        //GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
 
         // Bind the Vertex Array Object and draw the triangles
         GL.BindVertexArray(_vertexArrayObject);
+
+        GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
+        GL.Disable(EnableCap.CullFace);
+
         GL.DrawArrays(PrimitiveType.Triangles, 0, _numVertices);
+
+        GL.Enable(EnableCap.CullFace);
+        GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+        Clear();
     }
 
     public struct Vertex
