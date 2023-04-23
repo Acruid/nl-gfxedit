@@ -26,9 +26,23 @@ public sealed class File3di
 
     public File3di()
     {
+        _header.Signature = (uint) FileVersion.V8;
+        _header.RenderType = LodRenderType_V8.GENERIC;
+        _header.Precision = 16;
+
         _textures = new List<TEXTURE>();
         _bmLines = new List<byte[]>();
         _palettes = new List<RGBA[]>();
+
+        _lodHeaders = new(_header.nLODs);
+        _lodPositions = new(_header.nLODs);
+        _lodNormals = new(_header.nLODs);
+        _lodFaces = new(_header.nLODs);
+        _lodSubObjects = new(_header.nLODs);
+        _lodBoneAnim = new(_header.nLODs);
+        _lodMaterials = new(_header.nLODs);
+        _lodColPlanes = new(_header.nLODs);
+        _lodColVolumes = new(_header.nLODs);
     }
 
     public unsafe void ReadFile(BinaryReader reader)
@@ -97,38 +111,44 @@ public sealed class File3di
 
         writer.Write(_textures.Count);
 
-        var texturesSpan = _textures.AsSpan();
-        var bmLinesSpan = _bmLines.AsSpan();
-        var palettesSpan = _palettes.AsSpan();
-
-        for (var i = 0; i < _textures.Count; i++)
+        if(_textures.Count > 0)
         {
-            writer.Write(texturesSpan.Slice(i, 1).AsBytes());
-            writer.Write(bmLinesSpan[i].AsSpan().AsBytes());
-            writer.Write(palettesSpan[i].AsSpan().AsBytes());
+            var texturesSpan = _textures.AsSpan();
+            var bmLinesSpan = _bmLines.AsSpan();
+            var palettesSpan = _palettes.AsSpan();
+
+            for (var i = 0; i < _textures.Count; i++)
+            {
+                writer.Write(texturesSpan.Slice(i, 1).AsBytes());
+                writer.Write(bmLinesSpan[i].AsSpan().AsBytes());
+                writer.Write(palettesSpan[i].AsSpan().AsBytes());
+            }
         }
 
-        var lodHeaderSpan = _lodHeaders.AsSpan();
-        var positions = _lodPositions.AsSpan();
-        var normals = _lodNormals.AsSpan();
-        var faces = _lodFaces.AsSpan();
-        var subObjs = _lodSubObjects.AsSpan();
-        var boneAnims = _lodBoneAnim.AsSpan();
-        var colPlanes = _lodColPlanes.AsSpan();
-        var colVolumes = _lodColVolumes.AsSpan();
-        var materials = _lodMaterials.AsSpan();
-
-        for (var i = 0; i < _lodHeaders.Count; i++)
+        if(_lodHeaders.Count > 0)
         {
-            writer.Write(lodHeaderSpan.Slice(i, 1).AsBytes());
-            writer.Write(positions[i].AsSpan().AsBytes());
-            writer.Write(normals[i].AsSpan().AsBytes());
-            writer.Write(faces[i].AsSpan().AsBytes());
-            writer.Write(subObjs[i].AsSpan().AsBytes());
-            writer.Write(boneAnims[i].AsSpan().AsBytes());
-            writer.Write(colPlanes[i].AsSpan().AsBytes());
-            writer.Write(colVolumes[i].AsSpan().AsBytes());
-            writer.Write(materials[i].AsSpan().AsBytes());
+            var lodHeaderSpan = _lodHeaders.AsSpan();
+            var positions = _lodPositions.AsSpan();
+            var normals = _lodNormals.AsSpan();
+            var faces = _lodFaces.AsSpan();
+            var subObjs = _lodSubObjects.AsSpan();
+            var boneAnims = _lodBoneAnim.AsSpan();
+            var colPlanes = _lodColPlanes.AsSpan();
+            var colVolumes = _lodColVolumes.AsSpan();
+            var materials = _lodMaterials.AsSpan();
+
+            for (var i = 0; i < _lodHeaders.Count; i++)
+            {
+                writer.Write(lodHeaderSpan.Slice(i, 1).AsBytes());
+                writer.Write(positions[i].AsSpan().AsBytes());
+                writer.Write(normals[i].AsSpan().AsBytes());
+                writer.Write(faces[i].AsSpan().AsBytes());
+                writer.Write(subObjs[i].AsSpan().AsBytes());
+                writer.Write(boneAnims[i].AsSpan().AsBytes());
+                writer.Write(colPlanes[i].AsSpan().AsBytes());
+                writer.Write(colVolumes[i].AsSpan().AsBytes());
+                writer.Write(materials[i].AsSpan().AsBytes());
+            }
         }
     }
 
@@ -166,17 +186,32 @@ public sealed class File3di
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct HEADER
     {
-        public int Signature;
+        public uint Signature;
 
         // assumed to be ASCII encoded text bytes
-        private fixed byte name[12];
+        private fixed byte name[0xC];
 
         private int PAD_0;
         public int nLODs;
-        public fixed int MinLodDist[4];
-        public fixed int renderType[4];
+        private fixed int minLodDist[4];
+        private fixed uint renderType[4];
         public int Precision;
         private fixed int PAD_1[16];
+
+        public int get_MinLodDist(int lod)
+        {
+            return minLodDist[lod] / 0xFF;
+        }
+
+        public bool set_MinLodDist(int lod, int dst)
+        {
+            if (minLodDist[Math.Min(0, lod - 1)] <= dst * 0xFF)
+                return false;
+            else
+                minLodDist[lod] = dst * 0xFF;
+
+            return true;
+        }
 
         public string Name
         {
@@ -184,7 +219,7 @@ public sealed class File3di
             {
                 fixed (byte* namePtr = name)
                 {
-                    ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(namePtr, 0x1C);
+                    ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(namePtr, 0xC);
                     span = CleanString(span);
                     return Encoding.ASCII.GetString(span);
                 }
@@ -193,11 +228,23 @@ public sealed class File3di
             {
                 fixed (byte* namePtr = name)
                 {
-                    var span = new Span<byte>(namePtr, 0x1C);
+                    var span = new Span<byte>(namePtr, 0xC);
                     span.Clear();
-                    int count = Math.Min(value.Length, 0x1B);
+                    int count = Math.Min(value.Length, 0xB);
                     ReadOnlySpan<char> charSpan = value.AsSpan().Slice(0, count);
                     Encoding.ASCII.GetBytes(charSpan, span);
+                }
+            }
+        }
+
+        public LodRenderType_V8 RenderType
+        {
+            get => (LodRenderType_V8) renderType[0];
+            set
+            {
+                for(var i = 0; i < 4; i++)
+                {
+                    renderType[i] = (uint)value;
                 }
             }
         }
@@ -407,7 +454,7 @@ public sealed class File3di
         V8 = 0x08494433 //{ '3', 'D', 'I', 0x8 }
     }
 
-    private enum LodRenderType_V8 : uint
+    public enum LodRenderType_V8 : uint
     {
         NONE = 0x0,
         GENERIC = 0x676E7263 //"crng"

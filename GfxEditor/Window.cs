@@ -86,14 +86,93 @@ internal class Window : GameWindow
     }
 
     private const string GuiModelWindowClass = "Gfx Model";
+    private int GfxTextureWindow_SelectedLodIdx = 0;
     private void PresentGfxModelWindow()
     {
         if (!(_gfxEdit is not null && _gfxEdit.OpenedFile is not null))
             return;
 
-        var header = _gfxEdit.OpenedFile._header;
+        ref var header = ref _gfxEdit.OpenedFile._header;
 
-        header.Name = ImGuiEx.InputString("Name", header.Name) ?? string.Empty;
+        ImGui.Begin(GuiModelWindowClass);
+
+        header.Name = ImGuiEx.InputString("Model Name", header.Name) ?? string.Empty;
+
+        if (ImGui.BeginCombo("Render Func", Enum.GetName(header.RenderType)))
+        {
+            var values = Enum.GetValues<LodRenderType_V8>();
+
+            for (var n = 0; n < values.Length; n++)
+            {
+                var is_selected = values[n] == header.RenderType;
+                if (ImGui.Selectable(Enum.GetName(values[n]), is_selected))
+                    if (values[n] != header.RenderType)
+                    {
+                        header.RenderType = values[n];
+                        // rendertype event
+                    }
+
+                if (is_selected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.Text("LODs:");
+
+        var lods = _gfxEdit.OpenedFile._lodHeaders;
+
+        // prevents selected from going out of bounds when lods count changes.
+        if (GfxTextureWindow_SelectedLodIdx > lods.Count)
+        {
+            GfxTextureWindow_SelectedLodIdx = 0;
+        }
+
+        if (ImGui.BeginListBox("##UNIQUE_LBL_1", new NVec2(-1, 5 * ImGui.GetTextLineHeightWithSpacing())))
+        {
+            for (int iLod = 0; iLod < lods.Count; iLod++)
+            {
+                bool is_selected = (GfxTextureWindow_SelectedLodIdx == iLod);
+                if (ImGui.Selectable($"{LodTranslate(iLod)}", is_selected))
+                {
+                    GfxTextureWindow_SelectedLodIdx = iLod;
+                }
+
+                // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                if (is_selected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndListBox();
+        }
+
+        var lodIdx = GfxTextureWindow_SelectedLodIdx;
+
+        var val = header.get_MinLodDist(lodIdx);
+        if (ImGui.InputInt("Min Dist", ref val))
+        {
+            header.set_MinLodDist(lodIdx, val);
+        }
+
+        ImGui.End();
+    }
+
+    private string LodTranslate(int lodNum)
+    {
+        switch (lodNum)
+        {
+            case 0:
+                return "HIGH";
+            case 1:
+                return "MED";
+            case 2:
+                return "LOW";
+            case 3:
+                return "TINY";
+        }
+
+        return string.Empty;
     }
 
     private const string GuiTextureWindowClass = "Gfx Textures";
