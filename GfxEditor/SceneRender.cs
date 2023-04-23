@@ -113,11 +113,10 @@ internal class SceneRender : IDisposable
             GL.Viewport(0, 0, window.ClientSize.X, window.ClientSize.Y); // back to full screen size
 
             GlError.Check();
-            // Because I use the texture from OpenGL, I need to invert the V from the UV.
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, texColor);
-            //ImGui.Image(new IntPtr(texColor), wsize, Vector2.UnitY, Vector2.UnitX);
-            ImGui.Image(new IntPtr(texColor), wsize);
+            // Because I use the texture from OpenGL, I need to invert the V from the UV.
+            ImGui.Image(new IntPtr(texColor), wsize, System.Numerics.Vector2.UnitY, System.Numerics.Vector2.UnitX);
 
             GlError.Check();
             ImGui.EndChild();

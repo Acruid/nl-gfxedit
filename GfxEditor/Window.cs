@@ -85,8 +85,18 @@ internal class Window : GameWindow
         */
     }
 
-    private const string GuiTextureWindowClass = "Gfx Textures";
+    private const string GuiModelWindowClass = "Gfx Model";
+    private void PresentGfxModelWindow()
+    {
+        if (!(_gfxEdit is not null && _gfxEdit.OpenedFile is not null))
+            return;
 
+        var header = _gfxEdit.OpenedFile._header;
+
+        header.Name = ImGuiEx.InputString("Name", header.Name) ?? string.Empty;
+    }
+
+    private const string GuiTextureWindowClass = "Gfx Textures";
     int GfxTextureWindow_SelectedTexIdx = 0;
     int GfxTextureWindow_TexColorHandle = -1;
     int GfxTextureWindow_TexAlphaHandle = -1;
@@ -366,6 +376,7 @@ internal class Window : GameWindow
         //ImGui.ShowDemoWindow();
 
         PresentGfxTextureWindow();
+        PresentGfxModelWindow();
 
         GlError.Check();
         _scene.DrawViewportWindow();
