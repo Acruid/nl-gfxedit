@@ -60,7 +60,7 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         // Create Vertex Buffer Object
         _gridVBO = GL.GenBuffer();
         GL.BindBuffer(BufferTarget.ArrayBuffer, _gridVBO);
-        GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<Vertex>(), _gridVerts, BufferUsageHint.StaticDraw);
+        GL.BufferData(BufferTarget.ArrayBuffer, _gridVerts.Length * Marshal.SizeOf<Vertex>(), _gridVerts, BufferUsageHint.StaticDraw);
 
         // Set up Vertex Attribute Pointers
         GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 7 * sizeof(float), 0);

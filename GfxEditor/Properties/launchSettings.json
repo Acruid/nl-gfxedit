@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GfxEditor": {
+      "commandName": "Project",
+      "commandLineArgs": "\"R:\\Novalogic\\Documents\\Archive\\3DI's\\TESTING 3DI's\\BARREL.3DI\""
+    }
+  }
+}
