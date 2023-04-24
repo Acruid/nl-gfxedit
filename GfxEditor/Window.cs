@@ -176,6 +176,9 @@ internal class Window : GameWindow
     }
 
     private const string GuiTextureWindowClass = "Gfx Textures";
+
+    bool GfxTextureWindow_ShowOpenTexModal = false;
+
     int GfxTextureWindow_SelectedTexIdx = 0;
     int GfxTextureWindow_TexColorHandle = -1;
     int GfxTextureWindow_TexAlphaHandle = -1;
@@ -217,7 +220,10 @@ internal class Window : GameWindow
             ImGui.EndListBox();
         }
 
-        if (ImGui.Button("Import")) { }
+        if (ImGui.Button("Import"))
+        {
+            GfxTextureWindow_ShowOpenTexModal = true;
+        }
 
         ImGui.SameLine();
 
@@ -325,12 +331,15 @@ internal class Window : GameWindow
                 GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
                 GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
 
-                GfxTextureWindow_TexAlphaHandle = texAlphaHandle = GL.GenTexture();
-                GL.BindTexture(TextureTarget.Texture2D, texAlphaHandle);
-                GL.ObjectLabel(ObjectLabelIdentifier.Texture, texAlphaHandle, 12, "GfxWnd:Alpha");
-                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb, texture.bmWidth, texture.bmHeight, 0, PixelFormat.Rgb, PixelType.UnsignedByte, texAlphaPixels);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+                if(stride == 2)
+                {
+                    GfxTextureWindow_TexAlphaHandle = texAlphaHandle = GenTexture();
+                    BindTexture(TextureTarget.Texture2D, texAlphaHandle);
+                    ObjectLabel(ObjectLabelIdentifier.Texture, texAlphaHandle, 12, "GfxWnd:Alpha");
+                    TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb, texture.bmWidth, texture.bmHeight, 0, PixelFormat.Rgb, PixelType.UnsignedByte, texAlphaPixels);
+                    TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+                    TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+                }
 
                 GfxTextureWindow_TexPalHandle = texPalHandle = GL.GenTexture();
                 GL.BindTexture(TextureTarget.Texture2D, texPalHandle);
@@ -488,7 +497,7 @@ internal class Window : GameWindow
 
             if (ImGui.BeginPopupModal("file-open-GfxModal", ref _showOpenGfxModal, ImGuiWindowFlags.NoTitleBar))
             {
-                var startingPath = @"D:\Projects\DF2 - Delta Force 2\Delta Force 2";
+                var startingPath = @"R:\Novalogic\Documents\Archive\3DI's\TESTING 3DI's\";
                 var picker = FilePicker.GetFilePicker(this, startingPath, ".3di");
                 if (picker.Draw())
                 {
@@ -501,6 +510,32 @@ internal class Window : GameWindow
 
             if (!ImGui.IsPopupOpen("file-open-GfxModal"))
                 _showOpenGfxModal = false;
+        }
+
+        const string OpenTexModalClass = "tex-import-tiff";
+        if (GfxTextureWindow_ShowOpenTexModal)
+        {
+            ImGui.OpenPopup(OpenTexModalClass);
+
+            if (ImGui.BeginPopupModal(OpenTexModalClass, ref GfxTextureWindow_ShowOpenTexModal, ImGuiWindowFlags.NoTitleBar))
+            {
+                var startingPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                var picker = FilePicker.GetFilePicker(this, startingPath, ".tif");
+                if (picker.Draw())
+                {
+                    Console.WriteLine(picker.SelectedFile);
+
+                    //TODO: Import Tex
+                    var file = new FileInfo(picker.SelectedFile);
+                    _gfxEdit.ReplaceTexture(GfxTextureWindow_SelectedTexIdx, file);
+
+                    FilePicker.RemoveFilePicker(this);
+                }
+                ImGui.EndPopup();
+            }
+
+            if (!ImGui.IsPopupOpen(OpenTexModalClass))
+                GfxTextureWindow_ShowOpenTexModal = false;
         }
 
         _controller.Render();

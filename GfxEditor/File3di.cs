@@ -253,10 +253,10 @@ public sealed class File3di
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct RGBA
     {
-        private byte R;
-        private byte G;
-        private byte B;
-        private byte A;
+        public byte R;
+        public byte G;
+        public byte B;
+        public byte A;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
