@@ -56,6 +56,8 @@ public class ImGuiController : IDisposable
 
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
 
+        io.ConfigWindowsMoveFromTitleBarOnly = true;
+
         CreateDeviceResources();
         SetKeyMappings();
 
