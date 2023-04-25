@@ -1,5 +1,11 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Buffers;
+using System.Runtime.InteropServices;
+using CommunityToolkit.HighPerformance;
+using SixLabors.ImageSharp.Formats.Tiff.Constants;
 using TiffLibrary;
+using TiffCompression = TiffLibrary.TiffCompression;
+using TiffPhotometricInterpretation = TiffLibrary.TiffPhotometricInterpretation;
+using TiffPlanarConfiguration = TiffLibrary.TiffPlanarConfiguration;
 
 namespace GfxEditor;
 
@@ -48,6 +54,12 @@ internal class GfxEdit
         public byte R;
         public byte G;
         public byte B;
+    }
+
+    struct Pixel
+    {
+        public byte idx;
+        public byte alpha;
     }
 
     /// <summary>
@@ -135,6 +147,75 @@ internal class GfxEdit
         }
 
         return true;
+    }
+
+    public async void ExportImage(int textureIdx, FileInfo tifFile)
+    {
+        // https://github.com/yigolden/TiffLibrary
+        var textureHdr = CollectionsMarshal.AsSpan(OpenedFile._textures)[textureIdx];
+        var pixelData = OpenedFile._bmLines[textureIdx];
+        //var pixelData = new byte[8192];
+        //Array.Fill<byte>(pixelData, 0x88);
+        var palette = OpenedFile._palettes[textureIdx];
+
+        var width = textureHdr.bmWidth;
+        var height = textureHdr.bmHeight;
+
+        using TiffFileWriter writer = await TiffFileWriter.OpenAsync(tifFile.FullName);
+
+        // Write palette
+        var colorMap = new ushort[256 * 3];
+        //Array.Fill<ushort>(colorMap, 0xDEAD);
+        for (int i = 0; i < 256; i++)
+        {
+            var color = palette[i];
+        
+            // TIFF: [RGB] 3DI: [BGRA]
+            colorMap[i + 000] = (ushort)(color.B << 8);
+            colorMap[i + 256] = (ushort)(color.G << 8);
+            colorMap[i + 512] = (ushort)(color.R << 8);
+        }
+
+        var palBytes = new byte[256 * 3 * sizeof(ushort)];
+        colorMap.AsSpan().AsBytes().CopyTo(palBytes);
+
+        // Encode the image into an IFD.
+        TiffStreamOffset ifdOffset;
+        using (var ifdWriter = writer.CreateImageFileDirectory())
+        {
+            await ifdWriter.WriteTagAsync(TiffTag.ImageWidth, TiffValueCollection.Single((ushort)width));
+            await ifdWriter.WriteTagAsync(TiffTag.ImageLength, TiffValueCollection.Single((ushort)height));
+            await ifdWriter.WriteTagAsync(TiffTag.BitsPerSample, new TiffValueCollection<ushort>(new[] { (ushort)8, (ushort)8 }));  //TODO: proper count transparency
+            await ifdWriter.WriteTagAsync(TiffTag.Compression, TiffValueCollection.Single((ushort)TiffCompression.NoCompression));
+            await ifdWriter.WriteTagAsync(TiffTag.PhotometricInterpretation, TiffValueCollection.Single((ushort)TiffPhotometricInterpretation.PaletteColor));
+            //ImageDescription
+            await ifdWriter.WriteTagAsync(TiffTag.StripOffsets, TiffFieldType.Long, 1, new TiffValueCollection<byte>(pixelData), CancellationToken.None);
+            await ifdWriter.WriteTagAsync(TiffTag.Orientation, TiffValueCollection.Single((ushort)TiffOrientation.TopLeft));
+            await ifdWriter.WriteTagAsync(TiffTag.SamplesPerPixel, TiffValueCollection.Single((ushort)2)); //TODO: proper stride
+            await ifdWriter.WriteTagAsync(TiffTag.RowsPerStrip, TiffValueCollection.Single((ushort)height));
+            await ifdWriter.WriteTagAsync(TiffTag.StripByteCounts, TiffValueCollection.Single((uint)pixelData.Length));
+            await ifdWriter.WriteTagAsync(TiffTag.XResolution, TiffValueCollection.Single(new TiffRational(96, 1)));
+            await ifdWriter.WriteTagAsync(TiffTag.YResolution, TiffValueCollection.Single(new TiffRational(96, 1)));
+            await ifdWriter.WriteTagAsync(TiffTag.PlanarConfiguration, TiffValueCollection.Single((ushort)TiffPlanarConfiguration.Chunky));
+            //PageName
+            await ifdWriter.WriteTagAsync(TiffTag.ResolutionUnit, TiffValueCollection.Single((ushort)TiffResolutionUnit.Inch));
+            //Software
+            //DateTime
+            await ifdWriter.WriteTagAsync(TiffTag.ColorMap, TiffFieldType.Short, 768, new TiffValueCollection<byte>(palBytes), CancellationToken.None);
+            await ifdWriter.WriteTagAsync(TiffTag.ExtraSamples, TiffValueCollection.Single((ushort)TiffExtraSample.UnassociatedAlphaData));
+            await ifdWriter.WriteTagAsync(TiffTag.SampleFormat, new TiffValueCollection<ushort>(new[] { (ushort)TiffSampleFormat.UnsignedInteger, (ushort)TiffSampleFormat.UnsignedInteger }));  //TODO: proper count transparency
+            //XMP
+            //ExifIFD
+            //InterColourProfile
+
+            ifdOffset = await ifdWriter.FlushAsync();
+        }
+
+        // Set this IFD to be the first IFD and flush TIFF file header.
+        writer.SetFirstImageFileDirectoryOffset(ifdOffset);
+        await writer.FlushAsync();
+
+        //return true;
     }
 
     static bool IsPowerOfTwo(int n)

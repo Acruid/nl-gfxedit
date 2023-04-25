@@ -229,7 +229,10 @@ internal class Window : GameWindow
 
         if (_textures.Count == 0) ImGui.BeginDisabled();
 
-        if (ImGui.Button("Export")) { }
+        if (ImGui.Button("Export"))
+        {
+            _gfxEdit.ExportImage(GfxTextureWindow_SelectedTexIdx, new FileInfo("BlargTex.tif"));
+        }
 
         ImGui.SameLine();
 

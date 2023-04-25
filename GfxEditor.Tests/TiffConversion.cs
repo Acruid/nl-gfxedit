@@ -87,5 +87,7 @@ namespace GfxEditor.Tests
                 }
             }
         }
+
+        
     }
 }
