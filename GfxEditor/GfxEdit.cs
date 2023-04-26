@@ -160,6 +160,7 @@ internal class GfxEdit
 
         var width = textureHdr.bmWidth;
         var height = textureHdr.bmHeight;
+        var hasAlpha = 2 == pixelData.Length / (width * height);
 
         using TiffFileWriter writer = await TiffFileWriter.OpenAsync(tifFile.FullName);
 
@@ -185,13 +186,19 @@ internal class GfxEdit
         {
             await ifdWriter.WriteTagAsync(TiffTag.ImageWidth, TiffValueCollection.Single((ushort)width));
             await ifdWriter.WriteTagAsync(TiffTag.ImageLength, TiffValueCollection.Single((ushort)height));
-            await ifdWriter.WriteTagAsync(TiffTag.BitsPerSample, new TiffValueCollection<ushort>(new[] { (ushort)8, (ushort)8 }));  //TODO: proper count transparency
+            if(hasAlpha)
+                await ifdWriter.WriteTagAsync(TiffTag.BitsPerSample, new TiffValueCollection<ushort>(new[] { (ushort)8, (ushort)8 }));
+            else
+                await ifdWriter.WriteTagAsync(TiffTag.BitsPerSample, TiffValueCollection.Single((ushort)8));
             await ifdWriter.WriteTagAsync(TiffTag.Compression, TiffValueCollection.Single((ushort)TiffCompression.NoCompression));
             await ifdWriter.WriteTagAsync(TiffTag.PhotometricInterpretation, TiffValueCollection.Single((ushort)TiffPhotometricInterpretation.PaletteColor));
             //ImageDescription
             await ifdWriter.WriteTagAsync(TiffTag.StripOffsets, TiffFieldType.Long, 1, new TiffValueCollection<byte>(pixelData), CancellationToken.None);
             await ifdWriter.WriteTagAsync(TiffTag.Orientation, TiffValueCollection.Single((ushort)TiffOrientation.TopLeft));
-            await ifdWriter.WriteTagAsync(TiffTag.SamplesPerPixel, TiffValueCollection.Single((ushort)2)); //TODO: proper stride
+            if(hasAlpha)
+                await ifdWriter.WriteTagAsync(TiffTag.SamplesPerPixel, TiffValueCollection.Single((ushort)2));
+            else
+                await ifdWriter.WriteTagAsync(TiffTag.SamplesPerPixel, TiffValueCollection.Single((ushort)1));
             await ifdWriter.WriteTagAsync(TiffTag.RowsPerStrip, TiffValueCollection.Single((ushort)height));
             await ifdWriter.WriteTagAsync(TiffTag.StripByteCounts, TiffValueCollection.Single((uint)pixelData.Length));
             await ifdWriter.WriteTagAsync(TiffTag.XResolution, TiffValueCollection.Single(new TiffRational(96, 1)));
@@ -202,7 +209,8 @@ internal class GfxEdit
             //Software
             //DateTime
             await ifdWriter.WriteTagAsync(TiffTag.ColorMap, TiffFieldType.Short, 768, new TiffValueCollection<byte>(palBytes), CancellationToken.None);
-            await ifdWriter.WriteTagAsync(TiffTag.ExtraSamples, TiffValueCollection.Single((ushort)TiffExtraSample.UnassociatedAlphaData));
+            if(hasAlpha)
+                await ifdWriter.WriteTagAsync(TiffTag.ExtraSamples, TiffValueCollection.Single((ushort)TiffExtraSample.UnassociatedAlphaData));
             await ifdWriter.WriteTagAsync(TiffTag.SampleFormat, new TiffValueCollection<ushort>(new[] { (ushort)TiffSampleFormat.UnsignedInteger, (ushort)TiffSampleFormat.UnsignedInteger }));  //TODO: proper count transparency
             //XMP
             //ExifIFD

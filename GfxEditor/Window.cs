@@ -231,12 +231,22 @@ internal class Window : GameWindow
 
         if (ImGui.Button("Export"))
         {
-            _gfxEdit.ExportImage(GfxTextureWindow_SelectedTexIdx, new FileInfo("BlargTex.tif"));
+            var n = GfxTextureWindow_SelectedTexIdx;
+            var texture = _textures[n];
+            var name = FilePicker.SanitizeFileName($"{texture.Name}.TIF");
+            _gfxEdit.ExportImage(GfxTextureWindow_SelectedTexIdx, new FileInfo(name));
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Export All")) { }
+        if (ImGui.Button("Export All"))
+        {
+            foreach (var texture in _textures)
+            {
+                var name = FilePicker.SanitizeFileName($"{texture.Name}.TIF");
+                _gfxEdit.ExportImage(GfxTextureWindow_SelectedTexIdx, new FileInfo(name));
+            }
+        }
 
         if (_textures.Count == 0) ImGui.EndDisabled();
 
