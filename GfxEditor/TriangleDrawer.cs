@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
 
 namespace GfxEditor;
 
@@ -190,6 +191,18 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
             GL.DrawArrays(PrimitiveType.Lines, 0, _gridVerts.Length);
         }
     }
+
+    public void HandleKeyDown(KeyboardKeyEventArgs args) { }
+
+    public void HandleKeyUp(KeyboardKeyEventArgs args) { }
+
+    public void HandleMouseDown(MouseButtonEventArgs args) { }
+
+    public void HandleMouseUp(MouseButtonEventArgs args) { }
+
+    public void HandleMouseWheel(MouseWheelEventArgs args) { }
+
+    public void HandleText(TextInputEventArgs args) { }
 
     public readonly struct Vertex
     {

@@ -22,8 +22,59 @@ internal class SceneRender : IDisposable
     {
         _drawer = drawer;
         _drawer.OnLoad();
-
         this.window = window;
+
+        // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-how-can-i-tell-whether-to-dispatch-mousekeyboard-to-dear-imgui-or-my-application
+
+        window.KeyDown += args =>
+        {
+            if(!window.IsFocused || !window.IsVisible || window.IsExiting)
+                return;
+
+            var io = ImGui.GetIO();
+            if (!io.WantCaptureKeyboard)
+                _drawer.HandleKeyDown(args);
+        };
+        window.KeyUp += args =>
+        {
+            if (!window.IsFocused || !window.IsVisible || window.IsExiting)
+                return;
+
+            _drawer.HandleKeyUp(args);
+        };
+
+        window.MouseDown += args =>
+        {
+            if (!window.IsFocused || !window.IsVisible || window.IsExiting)
+                return;
+
+            var io = ImGui.GetIO();
+            if (!io.WantCaptureMouse)
+                _drawer.HandleMouseDown(args);
+        };
+        window.MouseUp += args =>
+        {
+            if (!window.IsFocused || !window.IsVisible || window.IsExiting)
+                return;
+
+            _drawer.HandleMouseUp(args);
+        };
+        window.MouseWheel += args =>
+        {
+            if (!window.IsFocused || !window.IsVisible || window.IsExiting)
+                return;
+
+            _drawer.HandleMouseWheel(args);
+        };
+        window.TextInput += args =>
+        {
+            if (!window.IsFocused || !window.IsVisible || window.IsExiting)
+                return;
+
+            var io = ImGui.GetIO();
+            if (!io.WantTextInput)
+                _drawer.HandleText(args);
+        };
     }
 
     public void DrawViewportWindow()
