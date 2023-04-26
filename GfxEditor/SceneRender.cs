@@ -3,6 +3,7 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace GfxEditor;
 
@@ -75,6 +76,17 @@ internal class SceneRender : IDisposable
                 return;
 
             _drawer.HandleMouseWheel(args);
+
+            var ySign = Math.Sign(args.Offset.Y);
+            if (ySign < 0) // Down
+            {
+                _drawer.Arcball.UpdateZoom(3f, _drawer.SceneSize);
+            }
+            else if (ySign > 0) // Up
+            {
+                _drawer.Arcball.UpdateZoom(-3f, _drawer.SceneSize);
+            }
+
         };
         window.TextInput += args =>
         {

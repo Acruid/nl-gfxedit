@@ -278,6 +278,7 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     }
 
     public ArcballCameraController Arcball => _arcball;
+    public float SceneSize => BatchSphereRadius;
 
     public readonly struct Vertex
     {

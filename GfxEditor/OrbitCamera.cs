@@ -30,10 +30,19 @@ namespace Engine.Graphics
 
         public float InputScale { get; set; } = 1;
 
-        public void UpdateZoom(float dz)
+        public void UpdateZoom(float dz, float sceneSize)
         {
-            SphereRadius += dz * InputScale;
-            SphereRadius = MathF.Max(0.001f, SphereRadius);
+            // Scale the zoom
+            // var k = objectSizeScalar;
+            // var X = sceneSize;
+            var distance = SphereRadius;
+            var k = distance * 2 * MathF.Tan(Camera.FieldOfView * 0.5f) / sceneSize;
+            k -= dz * InputScale;
+            distance = k * sceneSize / (2 * MathF.Tan(Camera.FieldOfView * 0.5f));
+            SphereRadius = MathF.Max(0.001f, distance);
+
+            //SphereRadius += dz * InputScale;
+            //SphereRadius = MathF.Max(0.001f, SphereRadius);
         }
 
         public void UpdateAngleInput(float dx, float dy, float dt)

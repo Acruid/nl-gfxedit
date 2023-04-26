@@ -17,4 +17,5 @@ public interface IModelDrawer
     void HandleText(TextInputEventArgs args);
     void PresentUi();
     ArcballCameraController Arcball { get; }
+    float SceneSize { get; }
 }
