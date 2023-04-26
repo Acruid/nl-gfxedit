@@ -170,6 +170,12 @@ internal class SceneRender : IDisposable
             // Because I use the texture from OpenGL, I need to invert the V from the UV.
             ImGui.Image(new IntPtr(texColor), wsize, System.Numerics.Vector2.UnitY, System.Numerics.Vector2.UnitX);
 
+            // enables mouse input pass through
+            // https://github.com/ocornut/imgui/issues/4831#issuecomment-1001522204
+            var result = ImGui.IsItemHovered();
+            if(result)
+                ImGui.SetNextFrameWantCaptureMouse(false);
+
             GlError.Check();
             ImGui.EndChild();
         }
