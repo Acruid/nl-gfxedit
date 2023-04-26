@@ -31,11 +31,12 @@ internal class SceneRender : IDisposable
         GlError.Check();
         // https://gamedev.stackexchange.com/a/140704
 
-        ImGui.Begin("GameWindow");
+        const string WindowViewClass = "Gfx View";
+        ImGui.Begin(WindowViewClass);
         {
             // Using a Child allow to fill all the space of the window.
             // It also alows customization
-            ImGui.BeginChild("GameRender");
+            ImGui.BeginChild(WindowViewClass + "Child");
 
             // Get the size of the child (i.e. the whole draw size of the windows).
             System.Numerics.Vector2 wsize = ImGui.GetWindowSize();
@@ -52,7 +53,7 @@ internal class SceneRender : IDisposable
                     fbo = GL.GenFramebuffer();
                     // bind our frame buffer
                     GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
-                    GL.ObjectLabel(ObjectLabelIdentifier.Framebuffer, fbo, 10, "GameWindow");
+                    GL.ObjectLabel(ObjectLabelIdentifier.Framebuffer, fbo, 10, WindowViewClass);
                 }
 
                 // bind our frame buffer
