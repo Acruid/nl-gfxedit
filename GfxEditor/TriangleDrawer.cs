@@ -1,4 +1,6 @@
 ﻿using System.Runtime.InteropServices;
+using Engine.Graphics;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -9,11 +11,17 @@ public interface ITriangleBatch
 {
     void Append(in TriangleDrawer.Vertex vertex);
     void Clear();
+    void FrameScene();
 }
 
 public class TriangleDrawer : IModelDrawer, ITriangleBatch
 {
+    public Camera _camera;
+    public ArcballCameraController _arcball;
+
     private const int BatchSize = 512 * 3; // 512 triangles
+    private float BatchSphereRadius = 1;
+    private bool FrameNextScene = false;
 
     private int _width;
     private int _height;
@@ -51,6 +59,54 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
             new Vertex(new Vector3(1, 1, 0), Color4.DarkGray),
             new Vertex(new Vector3(1, -1, 0), Color4.DarkGray),
         };
+
+    public TriangleDrawer()
+    {
+        _camera = new Camera();
+        _arcball = new ArcballCameraController(_camera);
+
+        ResetCamera(_arcball);
+    }
+
+    private static void ResetCamera(ArcballCameraController camera)
+    {
+        // angle.Y < 0
+        camera.SphereicalAngles = new Vector2(0, MathHelper.DegreesToRadians(30));
+        camera.SphereRadius = 4;
+        camera.Camera.FieldOfView = 60f;
+    }
+
+    private void RenderCameraUi(ArcballCameraController arcBallCam)
+    {
+        ImGui.Begin("Camera");
+        {
+            var sphereAngles = arcBallCam.SphereicalAngles.ToNumeric();
+            ImGui.SliderFloat2("Rotation", ref sphereAngles, -MathF.PI, MathF.PI);
+            sphereAngles.Y = MathF.Max(0.001f, sphereAngles.Y);
+            sphereAngles.Y = MathF.Min(MathF.PI - 0.001f, sphereAngles.Y);
+            arcBallCam.SphereicalAngles = sphereAngles.ToTk();
+        }
+
+        {
+            var sphereRadius = arcBallCam.SphereRadius;
+            ImGui.InputFloat("Radius", ref sphereRadius, 0, 32);
+            arcBallCam.SphereRadius = sphereRadius;
+        }
+
+        {
+            var fov = arcBallCam.Camera.FieldOfView;
+            ImGui.SliderFloat("V FOV", ref fov, 10, 200);
+            arcBallCam.Camera.FieldOfView = fov;
+        }
+
+        if (ImGui.Button("Cam Reset"))
+            ResetCamera(arcBallCam);
+
+        if (ImGui.Button("Fit Scene"))
+            FrameNextScene = true;
+
+        ImGui.End();
+    }
 
     public void OnLoad()
     {
@@ -141,15 +197,25 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
 
         GL.Viewport(0, 0, _width, _height);
 
-        float aspectRatio = (float)width / height;
+        _arcball.Camera.ViewportSize = new Vector2i(width, height);
+
         Matrix4 _model = Matrix4.Identity;
-        Matrix4 _view = Matrix4.LookAt(new Vector3(-4, 0, 1), new Vector3(0, 0, 0), new Vector3(0, 0, 1));
-        Matrix4 _projection = Matrix4.CreatePerspectiveFieldOfView(60 * MathF.PI / 180.0f, aspectRatio, 0.1f, 100.0f);
+        _arcball.UpdateView();
+        Matrix4 _view = _arcball.Camera.ViewMatrix;
+        Matrix4 _projection = _arcball.Camera.ProjectionMatrix;
         _mvpMatrix = _model * _view * _projection;
     }
 
     public void OnRenderFrame()
     {
+        // Frame the scene
+        if(FrameNextScene)
+        {
+            FrameNextScene = false;
+            _arcball.FrameSphere(BatchSphereRadius);
+            _arcball.UpdateView();
+        }
+
         // Set clear color
         GL.ClearColor(new Color4(0, 64, 80, 255));
 
@@ -204,6 +270,11 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
 
     public void HandleText(TextInputEventArgs args) { }
 
+    public void PresentUi()
+    {
+        RenderCameraUi(_arcball);
+    }
+
     public readonly struct Vertex
     {
         public readonly Vector3 Position;
@@ -220,11 +291,20 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     {
         _vertices[_numVertices] = vertex;
         _numVertices++;
+
+        var vLen = MathF.Max(1, vertex.Position.Length);
+        BatchSphereRadius = MathF.Max(vLen, BatchSphereRadius);
     }
 
     public void Clear()
     {
         _numVertices = 0;
+        BatchSphereRadius = 1;
+    }
+
+    public void FrameScene()
+    {
+        FrameNextScene = true;
     }
 }
 

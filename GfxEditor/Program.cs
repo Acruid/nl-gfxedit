@@ -6,14 +6,14 @@ internal static class Program
     {
         var editor = new GfxEdit();
 
+        Window wnd = new Window(editor);
+
         if (args.Length == 1)
         {
             var file = new FileInfo(args[0]);
-            if(file.Exists)
+            if (file.Exists)
                 editor.LoadFile(file);
         }
-
-        Window wnd = new Window(editor);
 
         wnd.Run();
 

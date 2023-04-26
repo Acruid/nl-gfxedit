@@ -71,18 +71,9 @@ internal class Window : GameWindow
 
     private void GfxFileUpdated()
     {
-        //TODO: Make me work!
-        /*
-        _drawer.ClearTextures();
+        //TODO: Update texture window
 
-        if (_gfxEdit.OpenedFile is null || _gfxEdit.OpenedFile._textures.Count == 0)
-            return;
-
-        for(var iTex = 0; iTex < _gfxEdit.OpenedFile._textures.Count; iTex++)
-        {
-
-        }
-        */
+        _drawer.FrameScene();
     }
 
     private const string GuiModelWindowClass = "Gfx Model";
@@ -478,6 +469,7 @@ internal class Window : GameWindow
 
         PresentGfxTextureWindow();
         PresentGfxModelWindow();
+        _scene.PresentUi();
 
         GlError.Check();
         _scene.DrawViewportWindow();

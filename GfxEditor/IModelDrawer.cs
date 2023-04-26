@@ -14,4 +14,5 @@ public interface IModelDrawer
     void HandleMouseUp(MouseButtonEventArgs args);
     void HandleMouseWheel(MouseWheelEventArgs args);
     void HandleText(TextInputEventArgs args);
+    void PresentUi();
 }

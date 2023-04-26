@@ -187,4 +187,9 @@ internal class SceneRender : IDisposable
         _drawer.OnUnload();
         GL.DeleteFramebuffer(fbo);
     }
+
+    public void PresentUi()
+    {
+        _drawer.PresentUi();
+    }
 }
