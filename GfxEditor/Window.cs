@@ -9,6 +9,7 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using static GfxEditor.File3di;
 using static OpenTK.Graphics.OpenGL.GL;
 using NVec2 = System.Numerics.Vector2;
@@ -472,7 +473,7 @@ internal class Window : GameWindow
         _scene.PresentUi();
 
         GlError.Check();
-        _scene.DrawViewportWindow();
+        _scene.DrawViewportWindow(TimeSpan.FromSeconds(e.Time));
 
         GlError.Check();
         _controller.EndDockspace();

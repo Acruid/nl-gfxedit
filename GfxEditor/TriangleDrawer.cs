@@ -4,6 +4,8 @@ using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace GfxEditor;
 
@@ -206,7 +208,7 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         _mvpMatrix = _model * _view * _projection;
     }
 
-    public void OnRenderFrame()
+    public void OnRenderFrame(TimeSpan dt)
     {
         // Frame the scene
         if(FrameNextScene)
@@ -274,6 +276,8 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     {
         RenderCameraUi(_arcball);
     }
+
+    public ArcballCameraController Arcball => _arcball;
 
     public readonly struct Vertex
     {

@@ -1,6 +1,8 @@
 ﻿using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace GfxEditor;
 
@@ -50,7 +52,12 @@ internal class SceneRender : IDisposable
 
             var io = ImGui.GetIO();
             if (!io.WantCaptureMouse)
+            {
                 _drawer.HandleMouseDown(args);
+
+                if(args.Button == MouseButton.Right)
+                    _camEnabled = true;
+            }
         };
         window.MouseUp += args =>
         {
@@ -58,6 +65,9 @@ internal class SceneRender : IDisposable
                 return;
 
             _drawer.HandleMouseUp(args);
+
+            if (args.Button == MouseButton.Right)
+                _camEnabled = false;
         };
         window.MouseWheel += args =>
         {
@@ -77,8 +87,45 @@ internal class SceneRender : IDisposable
         };
     }
 
-    public void DrawViewportWindow()
+    private Vector2i _lastpos;
+    public Vector2i GetCursorPosition()
     {
+        var mouseState = window.MouseState;
+        var screenSize = window.ClientSize;
+        var newPoint = new Vector2i((int)mouseState.X, (int)mouseState.Y);
+        var clientPos = newPoint;
+
+        // prevents cursor being updated outside of window
+        if (0 < clientPos.X && clientPos.X < screenSize.X &&
+            0 < clientPos.Y && clientPos.Y < screenSize.Y)
+        {
+            _lastpos = clientPos;
+        }
+
+        return new Vector2i(_lastpos.X, _lastpos.Y);
+    }
+
+
+    private bool _camEnabled = false;
+    private Vector2i _lastMousePosition;
+    private void UpdateCameraDrag(TimeSpan dt)
+    {
+        // mouse orbit camera binding
+        var newMousePos = GetCursorPosition();
+
+        var delta = newMousePos - _lastMousePosition;
+        _lastMousePosition = newMousePos;
+
+        if (_camEnabled == false || delta.X == 0 && delta.Y == 0)
+            return;
+
+        _drawer.Arcball.UpdateAngleInput(-delta.X, -delta.Y, (float)dt.TotalSeconds);
+    }
+
+    public void DrawViewportWindow(TimeSpan dt)
+    {
+        UpdateCameraDrag(dt);
+
         GlError.Check();
         // https://gamedev.stackexchange.com/a/140704
 
@@ -155,7 +202,7 @@ internal class SceneRender : IDisposable
             {
                 //Draw triangle
                 _drawer.OnResize(wsizei.X, wsizei.Y);
-                _drawer.OnRenderFrame();
+                _drawer.OnRenderFrame(dt);
                 GlError.Check();
             }
 
