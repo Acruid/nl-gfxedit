@@ -1,31 +1,40 @@
 ﻿using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
-using static System.Runtime.CompilerServices.RuntimeHelpers;
+using System;
+using CommunityToolkit.HighPerformance;
+using static GfxEditor.File3di;
 
 namespace GfxEditor;
 
-internal class SceneRender : IDisposable
+internal class SceneRenderPresenter : IDisposable
 {
     // https://learnopengl.com/Advanced-OpenGL/Framebuffers
     // https://stackoverflow.com/questions/9261942/opentk-c-sharp-roatating-cube-example
 
-    private IModelDrawer _drawer;
+    private readonly TriangleDrawer _triangleBatch;
+    private readonly GfxEdit _model;
 
-    int fbo;
-    int rbo;
+    private int fbo;
+    private int rbo;
     int texColor;
     //int texDepth;
     Vector2i fboSize = default;
     private readonly Window window;
 
-    public SceneRender(Window window, IModelDrawer drawer)
+    public SceneRenderPresenter(Window parent, GfxEdit model)
     {
-        _drawer = drawer;
-        _drawer.OnLoad();
-        this.window = window;
+        _triangleBatch = new TriangleDrawer();
+        _model = model;
+        _triangleBatch.OnLoad();
+        window = parent;
+
+        model.FileUpdated += (sender, args) =>
+        {
+            RebuildTextures();
+            _triangleBatch.FrameScene();
+        };
 
         // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-how-can-i-tell-whether-to-dispatch-mousekeyboard-to-dear-imgui-or-my-application
 
@@ -36,14 +45,14 @@ internal class SceneRender : IDisposable
 
             var io = ImGui.GetIO();
             if (!io.WantCaptureKeyboard)
-                _drawer.HandleKeyDown(args);
+                _triangleBatch.HandleKeyDown(args);
         };
         window.KeyUp += args =>
         {
             if (!window.IsFocused || !window.IsVisible || window.IsExiting)
                 return;
 
-            _drawer.HandleKeyUp(args);
+            _triangleBatch.HandleKeyUp(args);
         };
 
         window.MouseDown += args =>
@@ -54,7 +63,7 @@ internal class SceneRender : IDisposable
             var io = ImGui.GetIO();
             if (!io.WantCaptureMouse)
             {
-                _drawer.HandleMouseDown(args);
+                _triangleBatch.HandleMouseDown(args);
 
                 if(args.Button == MouseButton.Right)
                     _camEnabled = true;
@@ -65,7 +74,7 @@ internal class SceneRender : IDisposable
             if (!window.IsFocused || !window.IsVisible || window.IsExiting)
                 return;
 
-            _drawer.HandleMouseUp(args);
+            _triangleBatch.HandleMouseUp(args);
 
             if (args.Button == MouseButton.Right)
                 _camEnabled = false;
@@ -75,16 +84,16 @@ internal class SceneRender : IDisposable
             if (!window.IsFocused || !window.IsVisible || window.IsExiting)
                 return;
 
-            _drawer.HandleMouseWheel(args);
+            _triangleBatch.HandleMouseWheel(args);
 
             var ySign = Math.Sign(args.Offset.Y);
             if (ySign < 0) // Down
             {
-                _drawer.Arcball.UpdateZoom(3f, _drawer.SceneSize);
+                _triangleBatch.Arcball.UpdateZoom(3f, _triangleBatch.SceneSize);
             }
             else if (ySign > 0) // Up
             {
-                _drawer.Arcball.UpdateZoom(-3f, _drawer.SceneSize);
+                _triangleBatch.Arcball.UpdateZoom(-3f, _triangleBatch.SceneSize);
             }
 
         };
@@ -95,7 +104,7 @@ internal class SceneRender : IDisposable
 
             var io = ImGui.GetIO();
             if (!io.WantTextInput)
-                _drawer.HandleText(args);
+                _triangleBatch.HandleText(args);
         };
     }
 
@@ -117,7 +126,6 @@ internal class SceneRender : IDisposable
         return new Vector2i(_lastpos.X, _lastpos.Y);
     }
 
-
     private bool _camEnabled = false;
     private Vector2i _lastMousePosition;
     private void UpdateCameraDrag(TimeSpan dt)
@@ -131,11 +139,14 @@ internal class SceneRender : IDisposable
         if (_camEnabled == false || delta.X == 0 && delta.Y == 0)
             return;
 
-        _drawer.Arcball.UpdateAngleInput(-delta.X, -delta.Y, (float)dt.TotalSeconds);
+        _triangleBatch.Arcball.UpdateAngleInput(-delta.X, -delta.Y, (float)dt.TotalSeconds);
     }
 
     public void DrawViewportWindow(TimeSpan dt)
     {
+        if(_triangleBatch is not null && _triangleBatch._renderTextures is not null)
+            PushModelTriangles(_triangleBatch, _model);
+
         UpdateCameraDrag(dt);
 
         GlError.Check();
@@ -165,9 +176,11 @@ internal class SceneRender : IDisposable
                     GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
                     GL.ObjectLabel(ObjectLabelIdentifier.Framebuffer, fbo, 10, WindowViewClass);
                 }
-
-                // bind our frame buffer
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
+                else
+                {
+                    // bind our frame buffer
+                    GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
+                }
 
                 if (texColor > 0)
                     GL.DeleteTexture(texColor);
@@ -188,12 +201,6 @@ internal class SceneRender : IDisposable
                 GL.ObjectLabel(ObjectLabelIdentifier.Renderbuffer, rbo, 16, "GameWindow:Depth");
                 GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.DepthComponent32f, wsizei.X, wsizei.Y);
                 GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, rbo);
-                //GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
-
-                //texDepth = GL.GenTexture();
-                //GL.BindTexture(TextureTarget.Texture2D, texDepth);
-                //GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.DepthComponent32f, 800, 600, 0, PixelFormat.DepthComponent, PixelType.Float, IntPtr.Zero);
-                //GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, texDepth, 0);
 
                 // make sure the frame buffer is complete
                 FramebufferErrorCode errorCode = GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
@@ -213,8 +220,8 @@ internal class SceneRender : IDisposable
             // actually draw the scene
             {
                 //Draw triangle
-                _drawer.OnResize(wsizei.X, wsizei.Y);
-                _drawer.OnRenderFrame(dt);
+                _triangleBatch.OnResize(wsizei.X, wsizei.Y);
+                _triangleBatch.OnRenderFrame(dt);
                 GlError.Check();
             }
 
@@ -243,12 +250,117 @@ internal class SceneRender : IDisposable
 
     public void Dispose()
     {
-        _drawer.OnUnload();
+        _triangleBatch.OnUnload();
         GL.DeleteFramebuffer(fbo);
     }
 
     public void PresentUi()
     {
-        _drawer.PresentUi();
+        _triangleBatch.PresentUi();
+    }
+
+    private void RebuildTextures()
+    {
+        // find max size of the textures, and square it
+        var textures = _model.OpenedFile._textures;
+        var maxTexSize = Vector2i.Zero;
+        foreach (var texture in textures)
+        {
+            maxTexSize = Vector2i.ComponentMax(maxTexSize, new Vector2i(texture.bmWidth, texture.bmHeight));
+        }
+
+        // Allocate array textures
+        if (_triangleBatch._renderTextures is not null)
+        {
+            _triangleBatch._renderTextures.Dispose();
+            _triangleBatch._renderTextures = null;
+        }
+        var texArray = _triangleBatch._renderTextures = new GfxArrayTexture(maxTexSize.X, maxTexSize.Y, textures.Count);
+
+        // Load tex data
+        for (var i = 0; i < textures.Count; i++)
+        {
+            var texture = textures[i];
+            var texels = new byte[texture.bmWidth * texture.bmHeight * sizeof(uint)];
+
+            var numPixels = texture.bmWidth * texture.bmHeight;
+            var stride = texture.bmSize / numPixels;
+
+            var bmLines = _model.OpenedFile._bmLines[i].AsSpan();
+            var palette = _model.OpenedFile._palettes[i].AsSpan().AsBytes();
+            for (var iPx = 0; iPx < numPixels; iPx++)
+            {
+                // GL: [RGBA] 3DI Palette: [BGRA]
+                var index = bmLines[iPx * stride + 0] * 4;
+                texels[iPx * 4 + 3] = stride == 2 ? bmLines[iPx * stride + 1] : (byte)255; // A
+                texels[iPx * 4 + 2] = palette[index + 0];
+                texels[iPx * 4 + 1] = palette[index + 1];
+                texels[iPx * 4 + 0] = palette[index + 2];
+            }
+
+            // add data to arrayTex
+            texArray.UploadTexture(texture.bmWidth, texture.bmHeight, i, texels);
+        }
+    }
+
+    private static void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit)
+    {
+        // get all triangles from gfx active lod and push to TriangleBatch
+
+        const CamoColor camo = CamoColor.Green;
+        var gfx = gfxEdit.OpenedFile;
+
+        if (gfx is null || gfx._header.nLODs == 0) return;
+
+        var lod = gfxEdit.ActiveLod;
+
+        for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
+        {
+            var bone = gfx._lodSubObjects[lod][iBone];
+
+            var foff = gfx.FaceOffset(lod, iBone); // offset into face array for bone
+            var voff = gfx.VecOffset(lod, iBone); // offset into vertex array for bone
+
+            for (var i = 0; i < bone.nFaces; i++)
+            {
+                var face = gfx._lodFaces[lod][i + foff];
+                var material = gfx._lodMaterials[lod][face.MaterialIndex];
+                var texIndex = material.TexIndex(camo);
+                var texture = gfx._textures[texIndex];
+                var norms = gfx._lodNormals[lod];
+
+                var boneOffset = new Vector4() { X = bone.VecXoff >> 8, Y = bone.VecYoff >> 8, Z = bone.VecZoff >> 8 };
+
+                {
+                    //TODO: Make the face verts arrays
+                    var vertPos = gfx._lodPositions[lod][face.Vertex1 + voff];
+                    var tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
+                    var pos = (tkVPos - boneOffset).Xyz / 256;
+                    var norm = norms[face.Normal1];
+                    var nor = new Vector3(norm.x, norm.y, norm.z);
+                    var coords = new Vector2(face.tu1 % 65536 / 65536.0f, face.tv1 % 65536 / 65536.0f);
+                    var vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, triangleDrawer._renderTextures.ScaleCoords(coords, texIndex));
+                    triangleDrawer.Append(in vert);
+
+                    vertPos = gfx._lodPositions[lod][face.Vertex2 + voff];
+                    tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
+                    pos = (tkVPos - boneOffset).Xyz / 256;
+                    norm = norms[face.Normal2];
+                    nor = new Vector3(norm.x, norm.y, norm.z);
+                    coords = new Vector2(face.tu2 % 65536 / 65536.0f, face.tv2 % 65536 / 65536.0f);
+                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, triangleDrawer._renderTextures.ScaleCoords(coords, texIndex));
+                    triangleDrawer.Append(in vert);
+
+                    vertPos = gfx._lodPositions[lod][face.Vertex3 + voff];
+                    tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
+                    pos = (tkVPos - boneOffset).Xyz / 256;
+                    norm = norms[face.Normal3];
+                    nor = new Vector3(norm.x, norm.y, norm.z);
+                    coords = new Vector2(face.tu3 % 65536 / 65536.0f, face.tv3 % 65536 / 65536.0f);
+                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, triangleDrawer._renderTextures.ScaleCoords(coords, texIndex));
+                    triangleDrawer.Append(in vert);
+                }
+            }
+        }
     }
 }

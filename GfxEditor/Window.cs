@@ -22,9 +22,8 @@ namespace GfxEditor;
 internal class Window : GameWindow
 {
     private readonly GfxEdit _gfxEdit;
-    ImGuiController _controller;
-    SceneRender _scene;
-    ITriangleBatch _drawer;
+    private ImGuiController _controller;
+    private SceneRenderPresenter _scene;
 
     public Window(GfxEdit gfxEdit) : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3) })
     {
@@ -61,20 +60,9 @@ internal class Window : GameWindow
 
         _controller = new ImGuiController(ClientSize.X, ClientSize.Y);
 
-        var drawer = new TriangleDrawer();
-        _drawer = drawer;
-        _scene = new SceneRender(this, drawer);
+        _scene = new SceneRenderPresenter(this, _gfxEdit);
 
         GlError.Check();
-
-        _gfxEdit.FileUpdated += (sender, args) => GfxFileUpdated();
-    }
-
-    private void GfxFileUpdated()
-    {
-        //TODO: Update texture window
-
-        _drawer.FrameScene();
     }
 
     private const string GuiModelWindowClass = "Gfx Model";
@@ -303,8 +291,7 @@ internal class Window : GameWindow
 
                 var bmLines = _gfxEdit.OpenedFile._bmLines[n].AsSpan();
                 var palette = _gfxEdit.OpenedFile._palettes[n].AsSpan().AsBytes();
-
-                //WARNING: This only works with powers of 2 sized images
+                
                 for (var i = 0; i < numPixels; i++)
                 {
                     // GL: [RGB] 3DI Palette: [BGRA]
@@ -417,8 +404,6 @@ internal class Window : GameWindow
     protected override void OnRenderFrame(FrameEventArgs e)
     {
         base.OnRenderFrame(e);
-
-        PushModelTriangles();
 
         _controller.Update(this, (float)e.Time);
 
@@ -549,56 +534,6 @@ internal class Window : GameWindow
         ImGuiController.CheckGLError("End of frame");
 
         SwapBuffers();
-    }
-
-    private void PushModelTriangles()
-    {
-        // get all triangles from gfx active lod and push to TriangleBatch
-
-        const CamoColor camo = CamoColor.Green;
-        var gfx = _gfxEdit.OpenedFile;
-
-        if (gfx is null || gfx._header.nLODs == 0) return;
-
-        var lod = _gfxEdit.ActiveLod;
-
-        for(var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
-        {
-            var bone = gfx._lodSubObjects[lod][iBone];
-
-            var foff = gfx.FaceOffset(lod, iBone); // offset into face array for bone
-            var voff = gfx.VecOffset(lod, iBone); // offset into vertex array for bone
-
-            for (var i = 0; i < bone.nFaces; i++)
-            {
-                var face = gfx._lodFaces[lod][i + foff];
-                var material = gfx._lodMaterials[lod][face.MaterialIndex];
-                var texture = gfx._textures[material.TexIndex(camo)];
-
-                var boneOffset = new Vector4() { X = bone.VecXoff >> 8, Y = bone.VecYoff >> 8, Z = bone.VecZoff >> 8 };
-
-                {
-                    //TODO: Make the face verts arrays
-                    var vertPos = gfx._lodPositions[lod][face.Vertex1 + voff];
-                    var tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
-                    var pos = (tkVPos - boneOffset).Xyz / 256;
-                    var vert = new TriangleDrawer.Vertex(pos, OpenTK.Mathematics.Color4.Red);
-                    _drawer.Append(in vert);
-
-                    vertPos = gfx._lodPositions[lod][face.Vertex2 + voff];
-                    tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
-                    pos = (tkVPos - boneOffset).Xyz / 256;
-                    vert = new TriangleDrawer.Vertex(pos, OpenTK.Mathematics.Color4.Red);
-                    _drawer.Append(in vert);
-
-                    vertPos = gfx._lodPositions[lod][face.Vertex3 + voff];
-                    tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
-                    pos = (tkVPos - boneOffset).Xyz / 256;
-                    vert = new TriangleDrawer.Vertex(pos, OpenTK.Mathematics.Color4.Red);
-                    _drawer.Append(in vert);
-                }
-            }
-        }
     }
 
     protected override void OnTextInput(TextInputEventArgs e)

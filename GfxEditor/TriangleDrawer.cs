@@ -4,22 +4,14 @@ using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace GfxEditor;
 
-public interface ITriangleBatch
+internal class TriangleDrawer : IModelDrawer
 {
-    void Append(in TriangleDrawer.Vertex vertex);
-    void Clear();
-    void FrameScene();
-}
-
-public class TriangleDrawer : IModelDrawer, ITriangleBatch
-{
-    public Camera _camera;
-    public ArcballCameraController _arcball;
+    private readonly Camera _camera;
+    private readonly ArcballCameraController _arcball;
+    public GfxArrayTexture? _renderTextures;
 
     private const int BatchSize = 512 * 3; // 512 triangles
     private float BatchSphereRadius = 1;
@@ -36,30 +28,31 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     private Shader _omniShader;
 
     private int _shaderMvpLoc;
+    private int _shaderTexLoc;
     private Matrix4 _mvpMatrix;
 
     private int _numVertices;
-    private readonly Vertex[] _vertices = new Vertex[BatchSize];
+    private readonly VertexTex[] _vertices = new VertexTex[BatchSize];
 
-    private readonly Vertex[] _gridVerts =
+    private readonly VertexDbg[] _gridVerts =
 {
             // Axis
-            new Vertex(Vector3.Zero, Color4.Red),
-            new Vertex(Vector3.UnitX, Color4.Red),
-            new Vertex(Vector3.Zero, Color4.Green),
-            new Vertex(Vector3.UnitY, Color4.Green),
-            new Vertex(Vector3.Zero, Color4.Blue),
-            new Vertex(Vector3.UnitZ, Color4.Blue),
+            new(Vector3.Zero, Color4.Red),
+            new(Vector3.UnitX, Color4.Red),
+            new(Vector3.Zero, Color4.Green),
+            new(Vector3.UnitY, Color4.Green),
+            new(Vector3.Zero, Color4.Blue),
+            new(Vector3.UnitZ, Color4.Blue),
 
             // Grid Border
-            new Vertex(new Vector3(-1, -1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(1, -1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(-1, -1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(-1, 1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(1, 1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(-1, 1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(1, 1, 0), Color4.DarkGray),
-            new Vertex(new Vector3(1, -1, 0), Color4.DarkGray),
+            new(new Vector3(-1, -1, 0), Color4.DarkGray),
+            new(new Vector3(1, -1, 0), Color4.DarkGray),
+            new(new Vector3(-1, -1, 0), Color4.DarkGray),
+            new(new Vector3(-1, 1, 0), Color4.DarkGray),
+            new(new Vector3(1, 1, 0), Color4.DarkGray),
+            new(new Vector3(-1, 1, 0), Color4.DarkGray),
+            new(new Vector3(1, 1, 0), Color4.DarkGray),
+            new(new Vector3(1, -1, 0), Color4.DarkGray),
         };
 
     public TriangleDrawer()
@@ -119,7 +112,7 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         // Create Vertex Buffer Object
         _gridVBO = GL.GenBuffer();
         GL.BindBuffer(BufferTarget.ArrayBuffer, _gridVBO);
-        GL.BufferData(BufferTarget.ArrayBuffer, _gridVerts.Length * Marshal.SizeOf<Vertex>(), _gridVerts, BufferUsageHint.StaticDraw);
+        GL.BufferData(BufferTarget.ArrayBuffer, _gridVerts.Length * Marshal.SizeOf<VertexDbg>(), _gridVerts, BufferUsageHint.StaticDraw);
 
         // Set up Vertex Attribute Pointers
         GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 7 * sizeof(float), 0);
@@ -136,13 +129,17 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         // Create Vertex Buffer Object
         _modelVBO = GL.GenBuffer();
         GL.BindBuffer(BufferTarget.ArrayBuffer, _modelVBO);
-        GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<Vertex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
+        GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<VertexTex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
 
         // Set up Vertex Attribute Pointers
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 7 * sizeof(float), 0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf<VertexTex>(), 0);
         GL.EnableVertexAttribArray(0);
-        GL.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, 7 * sizeof(float), 3 * sizeof(float));
+        GL.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, Marshal.SizeOf<VertexTex>(), 3 * sizeof(float));
         GL.EnableVertexAttribArray(1);
+        GL.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf<VertexTex>(), 7 * sizeof(float));
+        GL.EnableVertexAttribArray(2);
+        GL.VertexAttribPointer(3, 3, VertexAttribPointerType.Float, false, Marshal.SizeOf<VertexTex>(), 10 * sizeof(float));
+        GL.EnableVertexAttribArray(3);
 
         //--------
 
@@ -152,14 +149,20 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
 
     layout (location = 0) in vec3 aPosition;
     layout (location = 1) in vec4 aColor;
+    layout (location = 2) in vec3 aNormal;
+    layout (location = 3) in vec3 aTexCoord;
 
     uniform mat4 uMVP;
 
     out vec4 vColor;
+    out vec3 vNormal;
+    out vec3 vTexCoord;
 
     void main()
     {
         vColor = aColor;
+        vNormal = aNormal;
+        vTexCoord = aTexCoord;
         gl_Position = vec4(aPosition, 1.0) * uMVP;
     }
 ";
@@ -168,18 +171,23 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     #version 330 core
 
     in vec4 vColor;
+    in vec3 vNormal;
+    in vec3 vTexCoord;
+
+    uniform sampler2DArray texArray;
 
     out vec4 FragColor;
 
     void main()
     {
-        FragColor = vColor;
+        FragColor = vColor * texture(texArray, vTexCoord);
     }
 ";
 
         _omniShader = new Shader(vertexShaderSource, fragmentShaderSource);
         _omniShader.Use();
         _shaderMvpLoc = GL.GetUniformLocation(_omniShader.Handle, "uMVP");
+        _shaderTexLoc = GL.GetUniformLocation(_omniShader.Handle, "texArray");
     }
 
     public void OnUnload()
@@ -230,6 +238,8 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
         _omniShader.Use();
 
         GL.UniformMatrix4(_shaderMvpLoc, true, ref _mvpMatrix);
+        GL.Uniform1(_shaderTexLoc, 0);
+        _renderTextures?.BindTexture0();
 
         {
             // Bind the Vertex Array Object and draw the triangles
@@ -237,26 +247,27 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
 
             // Update vertex data
             GL.BindBuffer(BufferTarget.ArrayBuffer, _modelVBO);
-            GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<Vertex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
-            GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _vertices.Length * Marshal.SizeOf<Vertex>(), _vertices);
+            GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<VertexTex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
+            GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _vertices.Length * Marshal.SizeOf<VertexTex>(), _vertices);
 
             // Enable blending
             //GL.Enable(EnableCap.Blend);
             //GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
             //GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
 
-            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
+            GL.Enable(EnableCap.DepthTest);
+            //GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
             GL.Disable(EnableCap.CullFace);
 
             GL.DrawArrays(PrimitiveType.Triangles, 0, _numVertices);
 
             GL.Enable(EnableCap.CullFace);
-            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+            //GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
             Clear();
         }
         {
-            GL.BindVertexArray(_gridVAO);
-            GL.DrawArrays(PrimitiveType.Lines, 0, _gridVerts.Length);
+            //GL.BindVertexArray(_gridVAO);
+            //GL.DrawArrays(PrimitiveType.Lines, 0, _gridVerts.Length);
         }
     }
 
@@ -280,24 +291,40 @@ public class TriangleDrawer : IModelDrawer, ITriangleBatch
     public ArcballCameraController Arcball => _arcball;
     public float SceneSize => BatchSphereRadius;
 
-    public readonly struct Vertex
+    public readonly struct VertexTex
+    {
+        public readonly Vector3 Position;
+        public readonly Color4 Color;
+        public readonly Vector3 Normal;
+        public readonly Vector3 TexCoords;
+
+        public VertexTex(Vector3 position, Color4 color, Vector3 normal, Vector3 texCoords)
+        {
+            Position = position;
+            Color = color;
+            Normal = normal;
+            TexCoords = texCoords;
+        }
+    }
+
+    public readonly struct VertexDbg
     {
         public readonly Vector3 Position;
         public readonly Color4 Color;
 
-        public Vertex(Vector3 position, Color4 color)
+        public VertexDbg(Vector3 position, Color4 color)
         {
             Position = position;
             Color = color;
         }
     }
 
-    public void Append(in Vertex vertex)
+    public void Append(in VertexTex vertexTex)
     {
-        _vertices[_numVertices] = vertex;
+        _vertices[_numVertices] = vertexTex;
         _numVertices++;
 
-        var vLen = MathF.Max(1, vertex.Position.Length);
+        var vLen = MathF.Max(1, vertexTex.Position.Length);
         BatchSphereRadius = MathF.Max(vLen, BatchSphereRadius);
     }
 
