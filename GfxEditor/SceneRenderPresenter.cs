@@ -301,6 +301,8 @@ internal class SceneRenderPresenter : IDisposable
             // add data to arrayTex
             texArray.UploadTexture(texture.bmWidth, texture.bmHeight, i, texels);
         }
+
+        texArray.Finish();
     }
 
     private static void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit)
@@ -338,8 +340,8 @@ internal class SceneRenderPresenter : IDisposable
                     var pos = (tkVPos - boneOffset).Xyz / 256;
                     var norm = norms[face.Normal1];
                     var nor = new Vector3(norm.x, norm.y, norm.z);
-                    var coords = new Vector2(face.tu1 % 65536 / 65536.0f, face.tv1 % 65536 / 65536.0f);
-                    var vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, triangleDrawer._renderTextures.ScaleCoords(coords, texIndex));
+                    var coords = new Vector2(face.tu1 / 65536.0f, face.tv1 / 65536.0f);
+                    var vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
 
                     vertPos = gfx._lodPositions[lod][face.Vertex2 + voff];
@@ -347,8 +349,8 @@ internal class SceneRenderPresenter : IDisposable
                     pos = (tkVPos - boneOffset).Xyz / 256;
                     norm = norms[face.Normal2];
                     nor = new Vector3(norm.x, norm.y, norm.z);
-                    coords = new Vector2(face.tu2 % 65536 / 65536.0f, face.tv2 % 65536 / 65536.0f);
-                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, triangleDrawer._renderTextures.ScaleCoords(coords, texIndex));
+                    coords = new Vector2(face.tu2 / 65536.0f, face.tv2 / 65536.0f);
+                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
 
                     vertPos = gfx._lodPositions[lod][face.Vertex3 + voff];
@@ -356,8 +358,8 @@ internal class SceneRenderPresenter : IDisposable
                     pos = (tkVPos - boneOffset).Xyz / 256;
                     norm = norms[face.Normal3];
                     nor = new Vector3(norm.x, norm.y, norm.z);
-                    coords = new Vector2(face.tu3 % 65536 / 65536.0f, face.tv3 % 65536 / 65536.0f);
-                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, triangleDrawer._renderTextures.ScaleCoords(coords, texIndex));
+                    coords = new Vector2(face.tu3 / 65536.0f, face.tv3 / 65536.0f);
+                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
                 }
             }

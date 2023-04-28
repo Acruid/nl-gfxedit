@@ -29,6 +29,7 @@ internal class TriangleDrawer : IModelDrawer
 
     private int _shaderMvpLoc;
     private int _shaderTexLoc;
+    private int _shaderTexScalarLoc;
     private Matrix4 _mvpMatrix;
 
     private int _numVertices;
@@ -175,12 +176,19 @@ internal class TriangleDrawer : IModelDrawer
     in vec3 vTexCoord;
 
     uniform sampler2DArray texArray;
+    uniform sampler1D uvScalars;
 
     out vec4 FragColor;
 
     void main()
     {
-        FragColor = vColor * texture(texArray, vTexCoord);
+        int uvScalarCoord = int(vTexCoord.z);
+        vec4 uvScalar = texelFetch(uvScalars, uvScalarCoord, 0);
+        vec3 modifiedTexCoord = vec3(vTexCoord.xy * uvScalar.xy + uvScalar.zw, vTexCoord.z);
+        FragColor = vColor * texture(texArray, modifiedTexCoord);
+
+        if (FragColor.a == 0.0)
+            discard;
     }
 ";
 
@@ -188,6 +196,7 @@ internal class TriangleDrawer : IModelDrawer
         _omniShader.Use();
         _shaderMvpLoc = GL.GetUniformLocation(_omniShader.Handle, "uMVP");
         _shaderTexLoc = GL.GetUniformLocation(_omniShader.Handle, "texArray");
+        _shaderTexScalarLoc = GL.GetUniformLocation(_omniShader.Handle, "uvScalars");
     }
 
     public void OnUnload()
@@ -239,7 +248,8 @@ internal class TriangleDrawer : IModelDrawer
 
         GL.UniformMatrix4(_shaderMvpLoc, true, ref _mvpMatrix);
         GL.Uniform1(_shaderTexLoc, 0);
-        _renderTextures?.BindTexture0();
+        GL.Uniform1(_shaderTexScalarLoc, 1);
+        _renderTextures?.BindTexture01();
 
         {
             // Bind the Vertex Array Object and draw the triangles

@@ -3,22 +3,6 @@ using OpenTK.Mathematics;
 
 namespace GfxEditor;
 
-public readonly struct texture_ptr : IEquatable<texture_ptr>
-{
-    public readonly int Value;
-
-    public texture_ptr(int value) => Value = value;
-    public static implicit operator int(texture_ptr ptr) => ptr.Value;
-
-    #region Equality
-    public bool Equals(texture_ptr other) => Value == other.Value;
-    public override bool Equals(object obj) => obj is texture_ptr other && Equals(other);
-    public override int GetHashCode() => Value;
-    public static bool operator ==(texture_ptr left, texture_ptr right) => left.Equals(right);
-    public static bool operator !=(texture_ptr left, texture_ptr right) => !left.Equals(right);
-    #endregion
-}
-
 internal class GfxArrayTexture : IDisposable
 {
     // https://www.khronos.org/opengl/wiki/Array_Texture
@@ -26,6 +10,7 @@ internal class GfxArrayTexture : IDisposable
     private texture_ptr texName;
     private Vector2i texSize;
     private Vector2[] texCoordScalar;
+    texture_ptr uvScalars;
 
     public GfxArrayTexture(int width, int height, int layerCount)
     {
@@ -45,8 +30,8 @@ internal class GfxArrayTexture : IDisposable
         GL.TexStorage3D(TextureTarget3d.Texture2DArray, 1, SizedInternalFormat.Rgba8, width, height, layerCount);
 
         // Always set reasonable texture parameters
-        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
     }
@@ -61,13 +46,34 @@ internal class GfxArrayTexture : IDisposable
         GL.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, layer, width, height, 1, PixelFormat.Rgba, PixelType.UnsignedByte, texelsRgba);
     }
 
-    public void BindTexture0()
+    public void Finish()
+    {
+        var tex = GL.GenTexture();
+        uvScalars = new texture_ptr(tex);
+        GL.BindTexture(TextureTarget.Texture1D, tex);
+
+        // set the texture parameters
+        GL.TexParameter(TextureTarget.Texture1D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture1D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture1D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+
+        // upload the texture data
+        GL.TexImage1D(TextureTarget.Texture1D, 0, PixelInternalFormat.Rg32f, texCoordScalar.Length, 0, PixelFormat.Rg, PixelType.Float, texCoordScalar);
+
+        // unbind the texture
+        GL.BindTexture(TextureTarget.Texture1D, 0);
+    }
+
+    public void BindTexture01()
     {
         // Select texture unit 0
         GL.ActiveTexture(TextureUnit.Texture0);
 
         // Bind the texture array to the currently active texture unit
         GL.BindTexture(TextureTarget.Texture2DArray, texName);
+
+        GL.ActiveTexture(TextureUnit.Texture1);
+        GL.BindTexture(TextureTarget.Texture1D, uvScalars);
     }
 
     private void ReleaseUnmanagedResources()
