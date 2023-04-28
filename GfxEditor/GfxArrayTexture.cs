@@ -42,6 +42,10 @@ internal class GfxArrayTexture : IDisposable
         var layerSize = new Vector2(width, height);
         texCoordScalar[layer] = layerSize / texSize;
 
+        var dbgColor = new uint[texSize.X * texSize.Y];
+        Array.Fill(dbgColor, 0xFF0000FF);
+        GL.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, layer, texSize.X, texSize.Y, 1, PixelFormat.Rgba, PixelType.UnsignedByte, dbgColor);
+
         // copy the texel data to the CPU
         GL.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, layer, width, height, 1, PixelFormat.Rgba, PixelType.UnsignedByte, texelsRgba);
     }

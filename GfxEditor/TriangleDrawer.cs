@@ -31,6 +31,7 @@ internal class TriangleDrawer : IModelDrawer
     private int _shaderTexLoc;
     private int _shaderTexScalarLoc;
     private Matrix4 _mvpMatrix;
+    private Matrix4 _viewMatrix;
 
     private int _numVertices;
     private readonly VertexTex[] _vertices = new VertexTex[BatchSize];
@@ -185,7 +186,7 @@ internal class TriangleDrawer : IModelDrawer
         int uvScalarCoord = int(vTexCoord.z);
         vec4 uvScalar = texelFetch(uvScalars, uvScalarCoord, 0);
         vec3 modifiedTexCoord = vec3(fract(vTexCoord.xy) * uvScalar.xy, vTexCoord.z);
-        FragColor = vColor * texture(texArray, modifiedTexCoord);
+        FragColor = vec4(vColor.rgb, 1) * texture(texArray, modifiedTexCoord);
 
         if (FragColor.a == 0.0)
             discard;
@@ -223,6 +224,7 @@ internal class TriangleDrawer : IModelDrawer
         Matrix4 _view = _arcball.Camera.ViewMatrix;
         Matrix4 _projection = _arcball.Camera.ProjectionMatrix;
         _mvpMatrix = _model * _view * _projection;
+        _viewMatrix = _view;
     }
 
     public void OnRenderFrame(TimeSpan dt)
@@ -255,21 +257,37 @@ internal class TriangleDrawer : IModelDrawer
             // Bind the Vertex Array Object and draw the triangles
             GL.BindVertexArray(_modelVAO);
 
+            // Prepare the triangles
+            var pivotIndex = TriangleSorter.SortTriangles(_vertices.AsSpan(0, _numVertices), _viewMatrix);
+
             // Update vertex data
             GL.BindBuffer(BufferTarget.ArrayBuffer, _modelVBO);
             GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<VertexTex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
             GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, _vertices.Length * Marshal.SizeOf<VertexTex>(), _vertices);
 
-            // Enable blending
-            //GL.Enable(EnableCap.Blend);
-            //GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-            //GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
-
             GL.Enable(EnableCap.DepthTest);
+
             //GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
             GL.Disable(EnableCap.CullFace);
 
-            GL.DrawArrays(PrimitiveType.Triangles, 0, _numVertices);
+            // Render the opaque triangles
+            GL.DrawArrays(PrimitiveType.Triangles, 0, pivotIndex);
+
+            // Enable blending for transparency
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+            // Disable depth writing
+            GL.DepthMask(false);
+
+            // Render the transparent triangles
+            GL.DrawArrays(PrimitiveType.Triangles, pivotIndex, _numVertices - pivotIndex);
+
+            // Re-enable depth writing
+            GL.DepthMask(true);
+
+            // Disable blending
+            GL.Disable(EnableCap.Blend);
 
             GL.Enable(EnableCap.CullFace);
             //GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
@@ -301,6 +319,7 @@ internal class TriangleDrawer : IModelDrawer
     public ArcballCameraController Arcball => _arcball;
     public float SceneSize => BatchSphereRadius;
 
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public readonly struct VertexTex
     {
         public readonly Vector3 Position;

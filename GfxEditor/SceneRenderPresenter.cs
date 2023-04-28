@@ -330,18 +330,21 @@ internal class SceneRenderPresenter : IDisposable
                 var texIndex = material.TexIndex(camo);
                 var texture = gfx._textures[texIndex];
                 var norms = gfx._lodNormals[lod];
+                var isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
 
                 var boneOffset = new Vector4() { X = bone.VecXoff >> 8, Y = bone.VecYoff >> 8, Z = bone.VecZoff >> 8 };
 
                 {
-                    //TODO: Make the face verts arrays
+                    //TODO: Make the face use arrays
                     var vertPos = gfx._lodPositions[lod][face.Vertex1 + voff];
                     var tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
                     var pos = (tkVPos - boneOffset).Xyz / 256;
                     var norm = norms[face.Normal1];
                     var nor = new Vector3(norm.x, norm.y, norm.z);
                     var coords = new Vector2(face.tu1 / 65536.0f, face.tv1 / 65536.0f);
-                    var vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, new Vector3(coords.X, coords.Y, texIndex));
+                    var color = Color4.White;
+                    color.A = isTransparent ? 0 : 1;
+                    var vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
 
                     vertPos = gfx._lodPositions[lod][face.Vertex2 + voff];
@@ -350,7 +353,9 @@ internal class SceneRenderPresenter : IDisposable
                     norm = norms[face.Normal2];
                     nor = new Vector3(norm.x, norm.y, norm.z);
                     coords = new Vector2(face.tu2 / 65536.0f, face.tv2 / 65536.0f);
-                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, new Vector3(coords.X, coords.Y, texIndex));
+                    //color = Color4.White;
+                    //color.A = isTransparent ? 0 : 1;
+                    vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
 
                     vertPos = gfx._lodPositions[lod][face.Vertex3 + voff];
@@ -359,7 +364,9 @@ internal class SceneRenderPresenter : IDisposable
                     norm = norms[face.Normal3];
                     nor = new Vector3(norm.x, norm.y, norm.z);
                     coords = new Vector2(face.tu3 / 65536.0f, face.tv3 / 65536.0f);
-                    vert = new TriangleDrawer.VertexTex(pos, OpenTK.Mathematics.Color4.White, nor, new Vector3(coords.X, coords.Y, texIndex));
+                    //color = Color4.White;
+                    //color.A = isTransparent ? 0 : 1;
+                    vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
                 }
             }
