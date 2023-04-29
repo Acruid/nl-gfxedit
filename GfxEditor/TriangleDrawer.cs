@@ -184,7 +184,7 @@ internal class TriangleDrawer : IModelDrawer
     {
         int uvScalarCoord = int(vTexCoord.z);
         vec4 uvScalar = texelFetch(uvScalars, uvScalarCoord, 0);
-        vec3 modifiedTexCoord = vec3(vTexCoord.xy * uvScalar.xy + uvScalar.zw, vTexCoord.z);
+        vec3 modifiedTexCoord = vec3(fract(vTexCoord.xy) * uvScalar.xy, vTexCoord.z);
         FragColor = vColor * texture(texArray, modifiedTexCoord);
 
         if (FragColor.a == 0.0)
