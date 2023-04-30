@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Text;
+using OpenTK.Mathematics;
 
 namespace GfxEditor;
 
@@ -18,7 +19,7 @@ public sealed class File3di
     public List<VECTOR4[]> _lodPositions;
     public List<VECTOR4[]> _lodNormals;
     public List<ModelFace[]> _lodFaces;
-    public List<ModelSubObject[]> _lodSubObjects;
+    public List<ModelSegmentMesh[]> _lodSubObjects;
     public List<ModelBoneAnim[]> _lodBoneAnim;
     public List<ModelMaterial[]> _lodMaterials;
     public List<COL_PLANE[]> _lodColPlanes;
@@ -90,10 +91,10 @@ public sealed class File3di
             reader.Read(lodHeaderSpan.Slice(i, 1).AsBytes());
             ref var lodHeader = ref lodHeaderSpan[i];
 
-            var positions = new VECTOR4[lodHeader.nVertices]; reader.Read(positions.AsSpan().AsBytes()); _lodPositions.Add(positions);
+            var positions = new VECTOR4[lodHeader.nPositions]; reader.Read(positions.AsSpan().AsBytes()); _lodPositions.Add(positions);
             var normals = new VECTOR4[lodHeader.nNormals]; reader.Read(normals.AsSpan().AsBytes()); _lodNormals.Add(normals);
             var faces = new ModelFace[lodHeader.nFaces]; reader.Read(faces.AsSpan().AsBytes()); _lodFaces.Add(faces);
-            var subObjs = new ModelSubObject[lodHeader.nSubObjects]; reader.Read(subObjs.AsSpan().AsBytes()); _lodSubObjects.Add(subObjs);
+            var segments = new ModelSegmentMesh[lodHeader.nSegments]; reader.Read(segments.AsSpan().AsBytes()); _lodSubObjects.Add(segments);
             var boneAnims = new ModelBoneAnim[lodHeader.nPartAnims]; reader.Read(boneAnims.AsSpan().AsBytes()); _lodBoneAnim.Add(boneAnims);
             var colPlanes = new COL_PLANE[lodHeader.nColPlanes]; reader.Read(colPlanes.AsSpan().AsBytes()); _lodColPlanes.Add(colPlanes);
             var colVolumes = new COL_VOLUME[lodHeader.nColVolumes]; reader.Read(colVolumes.AsSpan().AsBytes()); _lodColVolumes.Add(colVolumes);
@@ -310,6 +311,11 @@ public sealed class File3di
         public short y;
         public short z;
         public short w;
+
+        public static implicit operator Vector4(in VECTOR4 vec)
+        {
+            return new Vector4(vec.x, vec.y, vec.z, vec.w);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -317,19 +323,11 @@ public sealed class File3di
     {
         private readonly short null0;
         private readonly short SurfaceIndex;
-        public int tu1;
-        public int tu2;
-        public int tu3;
-        public int tv1;
-        public int tv2;
-        public int tv3;
+        public fixed int texCoordU[3];
+        public fixed int texCoordV[3];
 
-        public short Vertex1;
-        public short Vertex2;
-        public short Vertex3;
-        public short Normal1;
-        public short Normal2;
-        public short Normal3;
+        public fixed short PositonIdx[3];
+        public fixed short NormalIdx[3];
 
         private readonly int Distance;
         private readonly int xMin;
@@ -367,7 +365,7 @@ public sealed class File3di
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public unsafe struct ModelSubObject
+    public unsafe struct ModelSegmentMesh
     {
         private int GAP_0;
         public int nVerts; //v,r number of verts in the subObject
@@ -394,42 +392,52 @@ public sealed class File3di
         private fixed int GAP_1[12];
     }
 
+    [Flags]
+    public enum LodHeaderFlags
+    { /* Misc attribute flags for a model lod. */
+        OffsetArmatures = 1 /* offset verts in Bones */
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct ModelLodHeader
     {
-        private fixed int null0[4];
-        private readonly int Flags; //v,r if(Flags & 1) offset verts in Bones
-        private readonly int length;
-        private readonly int PTR_ModelInfo; //v,w ptr to all of the model info after header
+        private fixed byte _gap0[16];
+        public LodHeaderFlags Flags; //v,r if(Flags & 1) offset verts in Bones
+        public int length;           //v,r length of model data after this header
+        private readonly int _gap1;
 
-        private readonly int SphereRadius;
-        private readonly int CircleRadius;
-        private readonly int zTotal;
-        public readonly int xMin;
-        public readonly int xMax;
-        public readonly int yMin;
-        public readonly int yMax;
-        public readonly int zMin;
-        public readonly int zMax;
+        public int SphereRadius; //v,r bounding sphere around the vertex positions
+        public int CircleRadius; //v,r bounding circle around the x/y vertex positions
+        public int zTotal;       //v,r height of the vertex AABB, Round(zMax - zMin, 3)
+        public int xMin;
+        public int xMax;
+        public int yMin;
+        public int yMax;
+        public int zMin;
+        public int zMax;
 
-        private fixed int null2[16];
+        private fixed byte _gap2[02];
+        public short texLoopCount;    //v,r Number of textures in the animated texture loop
+        private fixed byte _gap3[22];
+        public short loopInterval;    //v,r Delay between textures in animated texture loop
+        private fixed byte _gap4[36];
 
-        public readonly int nVertices; //v,r number of verts in lod mesh
-        private readonly int null3; //v,w number of verts in lod mesh
-        public readonly int nNormals; //v,r number of normals in lod mesh
-        private readonly int null4; //v,w ptr to start of normals in-mem
-        public readonly int nFaces; //v,r number of faces of mesh
-        private readonly int null5; //v,w ptr to start of faces in-mem
-        public readonly int nSubObjects; //v,r number of sub objects
-        private readonly int null6; //v,w ptr to start of sub objects
-        public readonly int nPartAnims; //v,r
-        private readonly int null7; //v,w
-        public readonly int nMaterials; //v,r
-        private readonly int null8; //v,w
-        public readonly int nColPlanes; //v,r
-        private readonly int null9; //v,w
-        public readonly int nColVolumes; //v,r
-        private readonly int null10; //v,w
+        public int nPositions;       //v,r number of vertex positions in lod model
+        private readonly int _gap5;
+        public int nNormals;         //v,r number of vertex normals in lod model
+        private readonly int _gap6;
+        public int nFaces;           //v,r number of model faces in lod model
+        private readonly int _gap7;
+        public int nSegments;        //v,r number of Segments in lod model
+        private readonly int _gap8;
+        public int nPartAnims;       //v,r number of PartAnims in lod model
+        private readonly int _gap9;
+        public int nMaterials;       //v,r number of Materials in lod model
+        private readonly int _gap10;
+        public int nColPlanes;       //v,r number of Collision Planes in lod model
+        private readonly int _gap11;
+        public int nColVolumes;      //v,r number of Collision Volumes in lod model
+        private readonly int _gap12;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

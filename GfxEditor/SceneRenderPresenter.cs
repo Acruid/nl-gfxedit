@@ -367,7 +367,7 @@ internal class SceneRenderPresenter : IDisposable
         drawer._lineBatch.Append(Vector3.UnitZ * -0.15f + pos.Xyz, Vector3.UnitZ * 0.15f + pos.Xyz, Color4.Pink);
     }
 
-    private static void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit, DebugDrawer dbg)
+    private static unsafe void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit, DebugDrawer dbg)
     {
         // get all triangles from gfx active lod and push to TriangleBatch
 
@@ -396,40 +396,20 @@ internal class SceneRenderPresenter : IDisposable
 
                 var boneOffset = new Vector4 { X = (byte) bone.VecXoff >> 8, Y = (byte) bone.VecYoff >> 8, Z = (byte) bone.VecZoff >> 8, W = 0 };
 
+                for(var iVertex = 0; iVertex < 3; iVertex++)
                 {
-                    //TODO: Make the face use arrays
-                    var vertPos = gfx._lodPositions[lod][face.Vertex1 + voff];
-                    var tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
-                    var pos = (tkVPos - boneOffset).Xyz / 256;
-                    var norm = norms[face.Normal1];
-                    var nor = new Vector3(norm.x, norm.y, norm.z);
-                    var coords = new Vector2(face.tu1 / 65536.0f, face.tv1 / 65536.0f);
+                    Vector4 segPos = gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
+                    var modelPos = (segPos - boneOffset).Xyz / 256;
+
+                    var normal = ((Vector4)norms[face.NormalIdx[iVertex]]).Xyz;
+
+                    var texCoords = new Vector2(face.texCoordU[iVertex] / 65536.0f, face.texCoordV[iVertex] / 65536.0f);
+
                     var color = Color4.White;
                     color.A = isTransparent ? 0 : 1;
-                    var vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
-                    triangleDrawer.Append(in vert);
 
-                    vertPos = gfx._lodPositions[lod][face.Vertex2 + voff];
-                    tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
-                    pos = (tkVPos - boneOffset).Xyz / 256;
-                    norm = norms[face.Normal2];
-                    nor = new Vector3(norm.x, norm.y, norm.z);
-                    coords = new Vector2(face.tu2 / 65536.0f, face.tv2 / 65536.0f);
-                    //color = Color4.White;
-                    //color.A = isTransparent ? 0 : 1;
-                    vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
-                    triangleDrawer.Append(in vert);
-
-                    vertPos = gfx._lodPositions[lod][face.Vertex3 + voff];
-                    tkVPos = new Vector4(vertPos.x, vertPos.y, vertPos.z, vertPos.w);
-                    pos = (tkVPos - boneOffset).Xyz / 256;
-                    norm = norms[face.Normal3];
-                    nor = new Vector3(norm.x, norm.y, norm.z);
-                    coords = new Vector2(face.tu3 / 65536.0f, face.tv3 / 65536.0f);
-                    //color = Color4.White;
-                    //color.A = isTransparent ? 0 : 1;
-                    vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
-                    triangleDrawer.Append(in vert);
+                    var vertex = new TriangleDrawer.VertexTex(modelPos, color, normal, new Vector3(texCoords.X, texCoords.Y, texIndex));
+                    triangleDrawer.Append(in vertex);
                 }
             }
         }
