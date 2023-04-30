@@ -24,6 +24,7 @@ internal class Window : GameWindow
     private readonly GfxEdit _gfxEdit;
     private ImGuiController _controller;
     private SceneRenderPresenter _scene;
+    private LodDataPresenter _lodWindow;
 
     public Window(GfxEdit gfxEdit) : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3) })
     {
@@ -61,6 +62,7 @@ internal class Window : GameWindow
         _controller = new ImGuiController(ClientSize.X, ClientSize.Y);
 
         _scene = new SceneRenderPresenter(this, _gfxEdit);
+        _lodWindow = new LodDataPresenter(this, _gfxEdit);
 
         GlError.Check();
     }
@@ -455,6 +457,7 @@ internal class Window : GameWindow
 
         PresentGfxTextureWindow();
         PresentGfxModelWindow();
+        _lodWindow.Present();
         _scene.PresentUi();
 
         GlError.Check();
