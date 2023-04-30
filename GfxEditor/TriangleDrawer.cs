@@ -13,7 +13,7 @@ internal class TriangleDrawer : IModelDrawer
     private readonly ArcballCameraController _arcball;
     public GfxArrayTexture? _renderTextures;
 
-    private const int BatchSize = 512 * 3; // 512 triangles
+    private const int BatchSize = 1024 * 3; // 512 triangles
     private float BatchSphereRadius = 1;
     private bool FrameNextScene = false;
 
@@ -197,7 +197,7 @@ internal class TriangleDrawer : IModelDrawer
         }
 
         // set the winding mode to clockwise
-        GL.FrontFace(FrontFaceDirection.Cw);
+        GL.FrontFace(FrontFaceDirection.Ccw);
 
         _omniShader.Use();
 
