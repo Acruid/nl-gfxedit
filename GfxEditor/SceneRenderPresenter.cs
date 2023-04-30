@@ -394,7 +394,7 @@ internal class SceneRenderPresenter : IDisposable
                 var norms = gfx._lodNormals[lod];
                 var isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
 
-                var boneOffset = new Vector4() { X = bone.VecXoff >> 8, Y = bone.VecYoff >> 8, Z = bone.VecZoff >> 8 };
+                var boneOffset = new Vector4 { X = (byte) bone.VecXoff >> 8, Y = (byte) bone.VecYoff >> 8, Z = (byte) bone.VecZoff >> 8, W = 0 };
 
                 {
                     //TODO: Make the face use arrays
