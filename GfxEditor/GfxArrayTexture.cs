@@ -32,8 +32,8 @@ internal class GfxArrayTexture : IDisposable
         // Always set reasonable texture parameters
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
-        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
     }
 
     public void UploadTexture(int width, int height, int layer, byte[] texelsRgba)
@@ -43,7 +43,7 @@ internal class GfxArrayTexture : IDisposable
         texCoordScalar[layer] = layerSize / texSize;
 
         var dbgColor = new uint[texSize.X * texSize.Y];
-        Array.Fill(dbgColor, 0xFF0000FF);
+        Array.Fill(dbgColor, 0xFFFF00FF);
         GL.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, layer, texSize.X, texSize.Y, 1, PixelFormat.Rgba, PixelType.UnsignedByte, dbgColor);
 
         // copy the texel data to the CPU
@@ -94,10 +94,5 @@ internal class GfxArrayTexture : IDisposable
 
     ~GfxArrayTexture() {
         ReleaseUnmanagedResources();
-    }
-
-    public Vector3 ScaleCoords(Vector2 texCoords, byte texIndex)
-    {
-        return new Vector3(texCoords.X, texCoords.Y, texIndex);
     }
 }

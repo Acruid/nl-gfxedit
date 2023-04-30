@@ -63,6 +63,11 @@ internal class Window : GameWindow
 
         _scene = new SceneRenderPresenter(this, _gfxEdit);
         _lodWindow = new LodDataPresenter(this, _gfxEdit);
+        _gfxEdit.FileUpdated += (sender, args) =>
+        {
+            textureDirty = true;
+            _gfxEdit.ActiveLod = GfxTextureWindow_SelectedLodIdx = 0;
+        };
 
         GlError.Check();
     }
@@ -118,7 +123,7 @@ internal class Window : GameWindow
                 bool is_selected = (GfxTextureWindow_SelectedLodIdx == iLod);
                 if (ImGui.Selectable($"{LodTranslate(iLod)}", is_selected))
                 {
-                    GfxTextureWindow_SelectedLodIdx = iLod;
+                    _gfxEdit.ActiveLod = GfxTextureWindow_SelectedLodIdx = iLod;
                 }
 
                 // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -165,13 +170,14 @@ internal class Window : GameWindow
     int GfxTextureWindow_TexColorHandle = -1;
     int GfxTextureWindow_TexAlphaHandle = -1;
     int GfxTextureWindow_TexPalHandle = -1;
+    private bool textureDirty = false;
     private void PresentGfxTextureWindow()
     {
         if (!(_gfxEdit is not null && _gfxEdit.OpenedFile is not null && _gfxEdit.OpenedFile._textures is not null))
             return;
 
         List<TEXTURE> _textures = _gfxEdit.OpenedFile._textures;
-        var texDirty = false;
+        var texDirty = textureDirty;
 
         // prevents selected from going out of bounds when _textures count changes.
         if (GfxTextureWindow_SelectedTexIdx > _textures.Count)
@@ -263,6 +269,7 @@ internal class Window : GameWindow
 
             if (texColorHandle == -1 || texDirty)
             {
+                textureDirty = false;
                 if(texColorHandle != -1)
                 {
                     GL.DeleteTexture(texColorHandle);

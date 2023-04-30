@@ -140,15 +140,28 @@ internal class TriangleDrawer : IModelDrawer
 
     out vec4 FragColor;
 
+
+    vec3 GetTexScalar(sampler1D tex, float idx)
+    {
+        int length = textureSize(tex, 0);
+        float cellSz = 1 / float(length);
+        float u = idx * cellSz + (cellSz / 2);
+
+        vec4 uvScalar = texture(tex, u, 0);
+        return vec3(uvScalar.xy, u);
+    }
+
     void main()
     {
-        int uvScalarCoord = int(vTexCoord.z);
-        vec4 uvScalar = texelFetch(uvScalars, uvScalarCoord, 0);
-        vec3 modifiedTexCoord = vec3(fract(vTexCoord.xy) * uvScalar.xy, vTexCoord.z);
-        FragColor = vec4(vColor.rgb, 1) * texture(texArray, modifiedTexCoord);
+        // texelFetch is broken on nvidia, works on Intel. float-> int precision issue?
+        //vec4 uvScalar = texelFetch(uvScalars, int(vTexCoord.z), 0);
 
-        if (FragColor.a == 0.0)
-            discard;
+        vec3 uvScalar = GetTexScalar(uvScalars, vTexCoord.z);
+
+        vec3 modifiedTexCoord = vec3(fract(vTexCoord.xy) * uvScalar.xy, vTexCoord.z);
+
+        //FragColor = vec4(uvScalar.xyz, 1);
+        FragColor = texture(texArray, modifiedTexCoord);
     }
 ";
 
