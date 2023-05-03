@@ -21,6 +21,7 @@ public readonly struct vao_ptr : IEquatable<vao_ptr>
     public static vao_ptr Generate(string name)
     {
         var array = GL.GenVertexArray();
+        GL.BindVertexArray(array);
         GL.ObjectLabel(ObjectLabelIdentifier.VertexArray, array, name.Length, name);
         return new vao_ptr(array);
     }
@@ -97,9 +98,10 @@ public readonly struct vbo_ptr : IEquatable<vbo_ptr>
         return new vbo_ptr(GL.GenBuffer());
     }
 
-    public static vbo_ptr GenBuffer(string name)
+    public static vbo_ptr GenBuffer(BufferTarget bindTarget, string name)
     {
         var buffer = GL.GenBuffer();
+        GL.BindBuffer(bindTarget, buffer);
         GL.ObjectLabel(ObjectLabelIdentifier.Buffer, buffer, name.Length, name);
         return new vbo_ptr(buffer);
     }
