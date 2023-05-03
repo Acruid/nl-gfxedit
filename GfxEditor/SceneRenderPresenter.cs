@@ -5,6 +5,8 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using CommunityToolkit.HighPerformance;
 using static GfxEditor.File3di;
+using Engine.Graphics;
+using static GfxEditor.TriangleDrawer;
 
 namespace GfxEditor;
 
@@ -14,6 +16,7 @@ internal class SceneRenderPresenter : IDisposable
     // https://stackoverflow.com/questions/9261942/opentk-c-sharp-roatating-cube-example
 
     private readonly TriangleDrawer _triangleBatch;
+    private readonly DebugDrawer _dbgDrawer;
     private readonly GfxEdit _model;
 
     private int fbo;
@@ -23,12 +26,36 @@ internal class SceneRenderPresenter : IDisposable
     Vector2i fboSize = default;
     private readonly Window window;
 
+    private readonly VertexDbg[] _gridVerts =
+{
+        // Axis
+        new(Vector3.Zero, Color4.Red),
+        new(Vector3.UnitX, Color4.Red),
+        new(Vector3.Zero, Color4.Green),
+        new(Vector3.UnitY, Color4.Green),
+        new(Vector3.Zero, Color4.Blue),
+        new(Vector3.UnitZ, Color4.Blue),
+
+        // Grid Border
+        new(new Vector3(-1, -1, 0), Color4.DarkGray),
+        new(new Vector3(1, -1, 0), Color4.DarkGray),
+        new(new Vector3(-1, -1, 0), Color4.DarkGray),
+        new(new Vector3(-1, 1, 0), Color4.DarkGray),
+        new(new Vector3(1, 1, 0), Color4.DarkGray),
+        new(new Vector3(-1, 1, 0), Color4.DarkGray),
+        new(new Vector3(1, 1, 0), Color4.DarkGray),
+        new(new Vector3(1, -1, 0), Color4.DarkGray),
+    };
+
     public SceneRenderPresenter(Window parent, GfxEdit model)
     {
         _triangleBatch = new TriangleDrawer();
         _model = model;
         _triangleBatch.OnLoad();
         window = parent;
+
+        _dbgDrawer = new DebugDrawer(_triangleBatch._camera);
+        _dbgDrawer.Initialize();
 
         model.FileUpdated += (sender, args) =>
         {
@@ -148,8 +175,16 @@ internal class SceneRenderPresenter : IDisposable
             PushModelTriangles(_triangleBatch, _model);
 
         UpdateCameraDrag(dt);
+        _dbgDrawer.Update(dt);
+
+        _dbgDrawer._lineBatch.Append(Vector3.Zero, Vector3.UnitX * 0.25f, Color4.Red);
+        _dbgDrawer._lineBatch.Append(Vector3.Zero, Vector3.UnitY * 0.25f, Color4.Green);
+        _dbgDrawer._lineBatch.Append(Vector3.Zero, Vector3.UnitZ * 0.25f, Color4.Blue);
+
 
         GlError.Check();
+        // DRAW WINDOW
+
         // https://gamedev.stackexchange.com/a/140704
 
         const string WindowViewClass = "Gfx View";
@@ -217,10 +252,19 @@ internal class SceneRenderPresenter : IDisposable
             GlError.Check();
             GL.Viewport(0,0, wsizei.X, wsizei.Y); // change the viewport to window
 
+
+            // Set clear color
+            GL.ClearColor(new Color4(0, 64, 80, 255));
+
+            // Clear the screen
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
             // actually draw the scene
             {
                 //Draw triangle
                 _triangleBatch.OnResize(wsizei.X, wsizei.Y);
+                _dbgDrawer.Resize();
+                _dbgDrawer.Render();
                 _triangleBatch.OnRenderFrame(dt);
                 GlError.Check();
             }
@@ -251,6 +295,7 @@ internal class SceneRenderPresenter : IDisposable
     public void Dispose()
     {
         _triangleBatch.OnUnload();
+        _dbgDrawer.Destroy();
         GL.DeleteFramebuffer(fbo);
     }
 

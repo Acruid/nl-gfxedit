@@ -9,7 +9,7 @@ namespace GfxEditor;
 
 internal class TriangleDrawer : IModelDrawer
 {
-    private readonly Camera _camera;
+    public readonly Camera _camera;
     private readonly ArcballCameraController _arcball;
     public GfxArrayTexture? _renderTextures;
 
@@ -19,9 +19,6 @@ internal class TriangleDrawer : IModelDrawer
 
     private int _width;
     private int _height;
-
-    private int _gridVAO;
-    private int _gridVBO;
 
     private int _modelVBO;
     private int _modelVAO;
@@ -35,27 +32,6 @@ internal class TriangleDrawer : IModelDrawer
 
     private int _numVertices;
     private readonly VertexTex[] _vertices = new VertexTex[BatchSize];
-
-    private readonly VertexDbg[] _gridVerts =
-{
-            // Axis
-            new(Vector3.Zero, Color4.Red),
-            new(Vector3.UnitX, Color4.Red),
-            new(Vector3.Zero, Color4.Green),
-            new(Vector3.UnitY, Color4.Green),
-            new(Vector3.Zero, Color4.Blue),
-            new(Vector3.UnitZ, Color4.Blue),
-
-            // Grid Border
-            new(new Vector3(-1, -1, 0), Color4.DarkGray),
-            new(new Vector3(1, -1, 0), Color4.DarkGray),
-            new(new Vector3(-1, -1, 0), Color4.DarkGray),
-            new(new Vector3(-1, 1, 0), Color4.DarkGray),
-            new(new Vector3(1, 1, 0), Color4.DarkGray),
-            new(new Vector3(-1, 1, 0), Color4.DarkGray),
-            new(new Vector3(1, 1, 0), Color4.DarkGray),
-            new(new Vector3(1, -1, 0), Color4.DarkGray),
-        };
 
     public TriangleDrawer()
     {
@@ -107,23 +83,6 @@ internal class TriangleDrawer : IModelDrawer
 
     public void OnLoad()
     {
-        // Create Vertex Array Object
-        _gridVAO = GL.GenVertexArray();
-        GL.BindVertexArray(_gridVAO);
-
-        // Create Vertex Buffer Object
-        _gridVBO = GL.GenBuffer();
-        GL.BindBuffer(BufferTarget.ArrayBuffer, _gridVBO);
-        GL.BufferData(BufferTarget.ArrayBuffer, _gridVerts.Length * Marshal.SizeOf<VertexDbg>(), _gridVerts, BufferUsageHint.StaticDraw);
-
-        // Set up Vertex Attribute Pointers
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 7 * sizeof(float), 0);
-        GL.EnableVertexAttribArray(0);
-        GL.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, 7 * sizeof(float), 3 * sizeof(float));
-        GL.EnableVertexAttribArray(1);
-
-        //--------
-
         // Create Vertex Array Object
         _modelVAO = GL.GenVertexArray();
         GL.BindVertexArray(_modelVAO);
@@ -237,14 +196,8 @@ internal class TriangleDrawer : IModelDrawer
             _arcball.UpdateView();
         }
 
-        // Set clear color
-        GL.ClearColor(new Color4(0, 64, 80, 255));
-
         // set the winding mode to clockwise
         GL.FrontFace(FrontFaceDirection.Cw);
-
-        // Clear the screen
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         _omniShader.Use();
 
@@ -292,10 +245,6 @@ internal class TriangleDrawer : IModelDrawer
             GL.Enable(EnableCap.CullFace);
             //GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
             Clear();
-        }
-        {
-            //GL.BindVertexArray(_gridVAO);
-            //GL.DrawArrays(PrimitiveType.Lines, 0, _gridVerts.Length);
         }
     }
 
