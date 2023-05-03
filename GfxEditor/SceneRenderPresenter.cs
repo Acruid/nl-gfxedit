@@ -7,6 +7,7 @@ using CommunityToolkit.HighPerformance;
 using static GfxEditor.File3di;
 using Engine.Graphics;
 using static GfxEditor.TriangleDrawer;
+using GfxEditor.Graphics;
 
 namespace GfxEditor;
 
@@ -17,6 +18,7 @@ internal class SceneRenderPresenter : IDisposable
 
     private readonly TriangleDrawer _triangleBatch;
     private readonly DebugDrawer _dbgDrawer;
+    private readonly TextDrawer _textDrawer;
     private readonly GfxEdit _model;
 
     private int fbo;
@@ -56,6 +58,9 @@ internal class SceneRenderPresenter : IDisposable
 
         _dbgDrawer = new DebugDrawer(_triangleBatch._camera);
         _dbgDrawer.Initialize();
+
+        _textDrawer = new TextDrawer(_triangleBatch._camera);
+        _textDrawer.Initialize();
 
         model.FileUpdated += (sender, args) =>
         {
@@ -181,6 +186,8 @@ internal class SceneRenderPresenter : IDisposable
         _dbgDrawer._lineBatch.Append(Vector3.Zero, Vector3.UnitY * 0.25f, Color4.Green);
         _dbgDrawer._lineBatch.Append(Vector3.Zero, Vector3.UnitZ * 0.25f, Color4.Blue);
 
+        // Draw text
+        _textDrawer.Update(dt);
 
         GlError.Check();
         // DRAW WINDOW
@@ -265,6 +272,8 @@ internal class SceneRenderPresenter : IDisposable
                 _triangleBatch.OnResize(wsizei.X, wsizei.Y);
                 _dbgDrawer.Resize();
                 _dbgDrawer.Render();
+                _textDrawer.Resize();
+                _textDrawer.Render();
                 _triangleBatch.OnRenderFrame(dt);
                 GlError.Check();
             }
@@ -296,6 +305,7 @@ internal class SceneRenderPresenter : IDisposable
     {
         _triangleBatch.OnUnload();
         _dbgDrawer.Destroy();
+        _textDrawer.Destroy();
         GL.DeleteFramebuffer(fbo);
     }
 
