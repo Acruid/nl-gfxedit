@@ -184,6 +184,13 @@ public sealed class File3di
     #region Binary Structs
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public readonly struct Fixed
+    {
+        public readonly ushort fraction;
+        public readonly short whole;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct HEADER
     {
         public uint Signature;
@@ -434,18 +441,50 @@ public sealed class File3di
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct COL_PLANE
     {
-        private short x;
-        private short y;
-        private short z;
-        private short distance;
+        public short x;
+        public short y;
+        public short z;
+        public short distance;
+    }
+
+    public enum CollisionVolumeType : uint
+    {
+        Normal = 1,
+        Climbable = 4,
+        Armory = 6,
+        Attachable = 7
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct COL_VOLUME
     {
-        private fixed byte GAP0[72];
-        private int nColPlanes;        //v,r number of colPlanes that belong to this
-        private int PTR_ColPlaneGroup; //v,w group of colPlanes that belog to this
+        public CollisionVolumeType VolumeType;
+
+        int gap0;
+
+        Fixed XMedian;
+        Fixed YMedian;
+        Fixed ZMedian;
+
+        Fixed BoundingSphere1;
+        Fixed BoundingSphere2;
+        Fixed BoundingSphere3;
+
+        Fixed HalfLength;
+        Fixed HalfWidth;
+        Fixed HalfHeight;
+
+        int gap1;
+
+        Fixed xMin;
+        Fixed xMax;
+        Fixed yMin;
+        Fixed yMax;
+        Fixed zMin;
+        Fixed zMax;
+
+        public int nColPlanes;        //v,r number of colPlanes that belong to this
+        int PTR_ColPlaneGroup; //v,w group of colPlanes that belog to this
     }
 
     public enum FileVersion : uint

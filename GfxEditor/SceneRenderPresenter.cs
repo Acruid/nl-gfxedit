@@ -177,7 +177,7 @@ internal class SceneRenderPresenter : IDisposable
     public void DrawViewportWindow(TimeSpan dt)
     {
         if(_triangleBatch is not null && _triangleBatch._renderTextures is not null)
-            PushModelTriangles(_triangleBatch, _model);
+            PushModelTriangles(_triangleBatch, _model, _dbgDrawer);
 
         UpdateCameraDrag(dt);
         _dbgDrawer.Update(dt);
@@ -360,7 +360,14 @@ internal class SceneRenderPresenter : IDisposable
         texArray.Finish();
     }
 
-    private static void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit)
+    private static void DrawPoint(DebugDrawer drawer, Vector4 pos)
+    {
+        drawer._lineBatch.Append(Vector3.UnitX * -0.15f + pos.Xyz, Vector3.UnitX * 0.15f + pos.Xyz, Color4.Pink);
+        drawer._lineBatch.Append(Vector3.UnitY * -0.15f + pos.Xyz, Vector3.UnitY * 0.15f + pos.Xyz, Color4.Pink);
+        drawer._lineBatch.Append(Vector3.UnitZ * -0.15f + pos.Xyz, Vector3.UnitZ * 0.15f + pos.Xyz, Color4.Pink);
+    }
+
+    private static void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit, DebugDrawer dbg)
     {
         // get all triangles from gfx active lod and push to TriangleBatch
 
@@ -424,6 +431,19 @@ internal class SceneRenderPresenter : IDisposable
                     vert = new TriangleDrawer.VertexTex(pos, color, nor, new Vector3(coords.X, coords.Y, texIndex));
                     triangleDrawer.Append(in vert);
                 }
+            }
+        }
+
+        for(var iColVol = 0; iColVol < gfx._lodColVolumes[lod].Length; iColVol++)
+        {
+            var colVol = gfx._lodColVolumes[lod][iColVol];
+
+            for(var iColPlane = 0; iColPlane < colVol.nColPlanes; iColPlane++)
+            {
+                var plane = gfx._lodColPlanes[lod][iColPlane];
+
+                var pos = new Vector4(plane.x << 2, plane.y << 2, plane.z << 2, plane.distance) / 0xFFFF;
+                DrawPoint(dbg, pos);
             }
         }
     }
