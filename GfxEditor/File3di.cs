@@ -187,8 +187,28 @@ public sealed class File3di
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public readonly struct Fixed
     {
-        public readonly ushort fraction;
-        public readonly short whole;
+        //Q15.16
+        public readonly int Value;
+
+        public Fixed(int value)
+        {
+            Value = value;
+        }
+
+        public static implicit operator float(Fixed val)
+        {
+            return val.Value / 65536f;
+        }
+
+        public static explicit operator Fixed(float val)
+        {
+            return new Fixed((int)Math.Round(val * 65536.0f));
+        }
+
+        public override string ToString()
+        {
+            return $"{(float)this:F3}";
+        }
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -470,9 +490,9 @@ public sealed class File3di
 
         int gap0;
 
-        Fixed XMedian;
-        Fixed YMedian;
-        Fixed ZMedian;
+        public Fixed XMedian;
+        public Fixed YMedian;
+        public Fixed ZMedian;
 
         Fixed BoundingSphere1;
         Fixed BoundingSphere2;

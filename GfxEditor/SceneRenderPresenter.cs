@@ -417,14 +417,78 @@ internal class SceneRenderPresenter : IDisposable
         for(var iColVol = 0; iColVol < gfx._lodColVolumes[lod].Length; iColVol++)
         {
             var colVol = gfx._lodColVolumes[lod][iColVol];
+            
+            var volCenter = new Vector3(colVol.XMedian, colVol.YMedian, colVol.ZMedian);
+            //var volCenter = new Vector3(0,0, 1);
 
-            for(var iColPlane = 0; iColPlane < colVol.nColPlanes; iColPlane++)
             {
+                var center = volCenter;
+                var halfx = Vector3.UnitX * 0.15f + center;
+                var halfy = Vector3.UnitY * 0.15f + center;
+                var halfz = Vector3.UnitZ * 0.15f + center;
+
+                dbg._lineBatch.Append(-halfx, halfx, Color4.Coral);
+                dbg._lineBatch.Append(-halfy, halfy, Color4.Coral);
+                dbg._lineBatch.Append(-halfz, halfz, Color4.Coral);
+            }
+
+            for (var iColPlane = 0; iColPlane < colVol.nColPlanes; iColPlane++)
+            {
+                //if(iColPlane != 2)
+                //    continue;
+
                 var plane = gfx._lodColPlanes[lod][iColPlane];
 
-                var pos = new Vector4(plane.x << 2, plane.y << 2, plane.z << 2, plane.distance) / 0xFFFF;
-                DrawPoint(dbg, pos);
+                var normal = new Vector3(plane.x / 16384.0f, plane.y / 16384.0f, plane.z / 16384.0f);
+                var distance = -plane.distance / 256f;
+                var verts = PlaneToVerts(normal, distance);
+
+                verts[0] += volCenter;
+                verts[1] += volCenter;
+                verts[2] += volCenter;
+                verts[3] += volCenter;
+
+                var color = new Color4(normal.X, normal.Y, normal.Z, 1);
+                dbg._lineBatch.Append(verts[0], verts[1], color);
+                dbg._lineBatch.Append(verts[1], verts[2], color);
+                dbg._lineBatch.Append(verts[2], verts[3], color);
+                dbg._lineBatch.Append(verts[3], verts[0], color);
             }
         }
+    }
+
+    static Vector3[] PlaneToVerts(Vector3 normal, float distance)
+    {
+        // Define the size of the rectangle to draw
+        float halfWidth = 1;
+        float halfHeight = 1;
+
+        // Find the closest point on the plane to the origin
+        Vector3 closestPoint = normal * distance;
+
+        // Find two orthogonal vectors on the plane
+        Vector3 v0;
+        if (normal.X != 0)
+            v0 = new Vector3(0, 1, 0);
+        else if (normal.Y != 0)
+            v0 = new Vector3(1, 0, 0);
+        else
+            v0 = new Vector3(1, 0, 0);
+
+        Vector3 v1 = Vector3.Cross(normal, v0);
+        Vector3 v2 = Vector3.Cross(normal, v1);
+
+        // Scale the vectors by halfWidth and halfHeight
+        v1 *= halfWidth / v1.Length;
+        v2 *= halfHeight / v2.Length;
+
+        // Find the four vertices of the rectangle
+        Vector3[] vertices = new Vector3[4];
+        vertices[0] = closestPoint + v1 + v2;
+        vertices[1] = closestPoint + v1 - v2;
+        vertices[2] = closestPoint - v1 - v2;
+        vertices[3] = closestPoint - v1 + v2;
+
+        return vertices;
     }
 }
