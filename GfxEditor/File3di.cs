@@ -494,22 +494,22 @@ public sealed class File3di
         public Fixed YMedian;
         public Fixed ZMedian;
 
-        Fixed BoundingSphere1;
-        Fixed BoundingSphere2;
-        Fixed BoundingSphere3;
+        public Fixed BoundingSphere1;
+        public Fixed BoundingSphere2;
+        public Fixed BoundingSphere3;
 
-        Fixed HalfLength;
-        Fixed HalfWidth;
-        Fixed HalfHeight;
+        public Fixed HalfLength;
+        public Fixed HalfWidth;
+        public Fixed HalfHeight;
 
         int gap1;
 
-        Fixed xMin;
-        Fixed xMax;
-        Fixed yMin;
-        Fixed yMax;
-        Fixed zMin;
-        Fixed zMax;
+        public Fixed xMin;
+        public Fixed xMax;
+        public Fixed yMin;
+        public Fixed yMax;
+        public Fixed zMin;
+        public Fixed zMax;
 
         public int nColPlanes;        //v,r number of colPlanes that belong to this
         int PTR_ColPlaneGroup; //v,w group of colPlanes that belog to this

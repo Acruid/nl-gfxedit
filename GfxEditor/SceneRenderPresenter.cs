@@ -370,13 +370,12 @@ internal class SceneRenderPresenter : IDisposable
     private static unsafe void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit, DebugDrawer dbg)
     {
         // get all triangles from gfx active lod and push to TriangleBatch
-
-        const CamoColor camo = CamoColor.Green;
         var gfx = gfxEdit.OpenedFile;
 
         if (gfx is null || gfx._header.nLODs == 0) return;
 
         var lod = gfxEdit.ActiveLod;
+        var camo = gfxEdit.Camouflage;
 
         for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
         {
@@ -414,40 +413,42 @@ internal class SceneRenderPresenter : IDisposable
             }
         }
 
+        int planeIdx = 0;
         for(var iColVol = 0; iColVol < gfx._lodColVolumes[lod].Length; iColVol++)
         {
             var colVol = gfx._lodColVolumes[lod][iColVol];
-            
-            var volCenter = new Vector3(colVol.XMedian, colVol.YMedian, colVol.ZMedian);
-            //var volCenter = new Vector3(0,0, 1);
+
+            // seems like the AABB center
+            {
+                var volCenter = new Vector3(colVol.XMedian, colVol.YMedian, colVol.ZMedian);
+
+                var center = volCenter;
+                var halfx = Vector3.UnitX * 0.15f;
+                var halfy = Vector3.UnitY * 0.15f;
+                var halfz = Vector3.UnitZ * 0.15f;
+
+                dbg._lineBatch.Append(-halfx + center, halfx + center, Color4.Coral);
+                dbg._lineBatch.Append(-halfy + center, halfy + center, Color4.Coral);
+                dbg._lineBatch.Append(-halfz + center, halfz + center, Color4.Coral);
+            }
 
             {
-                var center = volCenter;
-                var halfx = Vector3.UnitX * 0.15f + center;
-                var halfy = Vector3.UnitY * 0.15f + center;
-                var halfz = Vector3.UnitZ * 0.15f + center;
+                var min = new Vector3(colVol.xMin, colVol.yMin, colVol.zMin);
+                var max = new Vector3(colVol.xMax, colVol.yMax, colVol.zMax);
 
-                dbg._lineBatch.Append(-halfx, halfx, Color4.Coral);
-                dbg._lineBatch.Append(-halfy, halfy, Color4.Coral);
-                dbg._lineBatch.Append(-halfz, halfz, Color4.Coral);
+                DrawBox(dbg._lineBatch, min, max, Color4.White);
             }
 
             for (var iColPlane = 0; iColPlane < colVol.nColPlanes; iColPlane++)
             {
-                //if(iColPlane != 2)
-                //    continue;
-
-                var plane = gfx._lodColPlanes[lod][iColPlane];
+                var plane = gfx._lodColPlanes[lod][planeIdx];
+                planeIdx++;
 
                 var normal = new Vector3(plane.x / 16384.0f, plane.y / 16384.0f, plane.z / 16384.0f);
                 var distance = -plane.distance / 256f;
                 var verts = PlaneToVerts(normal, distance);
 
-                verts[0] += volCenter;
-                verts[1] += volCenter;
-                verts[2] += volCenter;
-                verts[3] += volCenter;
-
+                // draw square
                 var color = new Color4(normal.X, normal.Y, normal.Z, 1);
                 dbg._lineBatch.Append(verts[0], verts[1], color);
                 dbg._lineBatch.Append(verts[1], verts[2], color);
@@ -455,6 +456,33 @@ internal class SceneRenderPresenter : IDisposable
                 dbg._lineBatch.Append(verts[3], verts[0], color);
             }
         }
+    }
+
+    private static void DrawBox(LineBatch lines, Vector3 min, Vector3 max, Color4 color)
+    {
+        Vector3 v1 = new Vector3(min.X, min.Y, min.Z);
+        Vector3 v2 = new Vector3(max.X, min.Y, min.Z);
+        Vector3 v3 = new Vector3(max.X, max.Y, min.Z);
+        Vector3 v4 = new Vector3(min.X, max.Y, min.Z);
+        Vector3 v5 = new Vector3(min.X, min.Y, max.Z);
+        Vector3 v6 = new Vector3(max.X, min.Y, max.Z);
+        Vector3 v7 = new Vector3(max.X, max.Y, max.Z);
+        Vector3 v8 = new Vector3(min.X, max.Y, max.Z);
+
+        lines.Append(v1, v2, color);
+        lines.Append(v2, v3, color);
+        lines.Append(v3, v4, color);
+        lines.Append(v4, v1, color);
+
+        lines.Append(v5, v6, color);
+        lines.Append(v6, v7, color);
+        lines.Append(v7, v8, color);
+        lines.Append(v8, v5, color);
+
+        lines.Append(v1, v5, color);
+        lines.Append(v2, v6, color);
+        lines.Append(v3, v7, color);
+        lines.Append(v4, v8, color);
     }
 
     static Vector3[] PlaneToVerts(Vector3 normal, float distance)

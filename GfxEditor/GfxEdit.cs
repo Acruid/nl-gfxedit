@@ -17,6 +17,7 @@ internal class GfxEdit
     public File3di OpenedFile { get; private set; } = new();
 
     public int ActiveLod { get; set; }
+    public File3di.CamoColor Camouflage { get; set; } = File3di.CamoColor.Green;
 
     public void NewFile()
     {
