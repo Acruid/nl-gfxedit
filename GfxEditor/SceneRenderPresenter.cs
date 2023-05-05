@@ -2,19 +2,13 @@
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
-using System;
 using CommunityToolkit.HighPerformance;
 using static GfxEditor.File3di;
 using Engine.Graphics;
-using static GfxEditor.TriangleDrawer;
 using GfxEditor.Graphics;
 using MathNet.Numerics.LinearAlgebra;
-
 using Vector3 = OpenTK.Mathematics.Vector3;
 using Color4 = OpenTK.Mathematics.Color4;
-using MathNet.Numerics.Distributions;
-using MathNet.Numerics;
-using MathNet.Numerics.Providers.LinearAlgebra;
 
 namespace GfxEditor;
 
@@ -32,29 +26,8 @@ public class SceneRenderPresenter : IDisposable
     private int rbo;
     int texColor;
     //int texDepth;
-    Vector2i fboSize = default;
+    Vector2i fboSize;
     private readonly Window window;
-
-    private readonly VertexDbg[] _gridVerts =
-{
-        // Axis
-        new(Vector3.Zero, Color4.Red),
-        new(Vector3.UnitX, Color4.Red),
-        new(Vector3.Zero, Color4.Green),
-        new(Vector3.UnitY, Color4.Green),
-        new(Vector3.Zero, Color4.Blue),
-        new(Vector3.UnitZ, Color4.Blue),
-
-        // Grid Border
-        new(new Vector3(-1, -1, 0), Color4.DarkGray),
-        new(new Vector3(1, -1, 0), Color4.DarkGray),
-        new(new Vector3(-1, -1, 0), Color4.DarkGray),
-        new(new Vector3(-1, 1, 0), Color4.DarkGray),
-        new(new Vector3(1, 1, 0), Color4.DarkGray),
-        new(new Vector3(-1, 1, 0), Color4.DarkGray),
-        new(new Vector3(1, 1, 0), Color4.DarkGray),
-        new(new Vector3(1, -1, 0), Color4.DarkGray),
-    };
 
     public SceneRenderPresenter(Window parent, GfxEdit model)
     {
@@ -69,7 +42,7 @@ public class SceneRenderPresenter : IDisposable
         _textDrawer = new TextDrawer(_triangleBatch._camera);
         _textDrawer.Initialize();
 
-        model.FileUpdated += (sender, args) =>
+        model.FileUpdated += (_, _) =>
         {
             RebuildTextures();
             _triangleBatch.FrameScene();
@@ -147,25 +120,27 @@ public class SceneRenderPresenter : IDisposable
         };
     }
 
-    private Vector2i _lastpos;
-    public Vector2i GetCursorPosition()
+    public bool DrawModelSkins { get; set; } = true;
+    public bool DrawModelCollision { get; set; } = false;
+
+    private Vector2i _lastClientPointerPosition;
+    private Vector2i GetCursorPosition()
     {
         var mouseState = window.MouseState;
         var screenSize = window.ClientSize;
-        var newPoint = new Vector2i((int)mouseState.X, (int)mouseState.Y);
-        var clientPos = newPoint;
+        var clientPos = new Vector2i((int)mouseState.X, (int)mouseState.Y);
 
         // prevents cursor being updated outside of window
         if (0 < clientPos.X && clientPos.X < screenSize.X &&
             0 < clientPos.Y && clientPos.Y < screenSize.Y)
         {
-            _lastpos = clientPos;
+            _lastClientPointerPosition = clientPos;
         }
 
-        return new Vector2i(_lastpos.X, _lastpos.Y);
+        return new Vector2i(_lastClientPointerPosition.X, _lastClientPointerPosition.Y);
     }
 
-    private bool _camEnabled = false;
+    private bool _camEnabled;
     private Vector2i _lastMousePosition;
     private void UpdateCameraDrag(TimeSpan dt)
     {
@@ -308,6 +283,48 @@ public class SceneRenderPresenter : IDisposable
         ImGui.End();
     }
 
+    private void RenderCameraUi(TriangleDrawer triangleDrawer, ArcballCameraController arcBallCam)
+    {
+        ImGui.Begin("Camera");
+        {
+            var sphereAngles = arcBallCam.SphereicalAngles.ToNumeric();
+            ImGui.SliderFloat2("Rotation", ref sphereAngles, -MathF.PI, MathF.PI);
+            sphereAngles.Y = MathF.Max(0.001f, sphereAngles.Y);
+            sphereAngles.Y = MathF.Min(MathF.PI - 0.001f, sphereAngles.Y);
+            arcBallCam.SphereicalAngles = sphereAngles.ToTk();
+        }
+
+        {
+            var sphereRadius = arcBallCam.SphereRadius;
+            ImGui.InputFloat("Radius", ref sphereRadius, 0, 32);
+            arcBallCam.SphereRadius = sphereRadius;
+        }
+
+        {
+            var fov = arcBallCam.Camera.FieldOfView;
+            ImGui.SliderFloat("V FOV", ref fov, 10, 200);
+            arcBallCam.Camera.FieldOfView = fov;
+        }
+
+        if (ImGui.Button("Cam Reset"))
+            TriangleDrawer.ResetCamera(arcBallCam);
+
+        if (ImGui.Button("Fit Scene"))
+            triangleDrawer.FrameNextScene = true;
+
+        ImGui.Separator();
+
+        var toggle = DrawModelSkins;
+        ImGui.Checkbox("Draw Model", ref toggle);
+        DrawModelSkins = toggle;
+
+        toggle = DrawModelCollision;
+        ImGui.Checkbox("Draw Collision", ref toggle);
+        DrawModelCollision = toggle;
+
+        ImGui.End();
+    }
+
     public void Dispose()
     {
         _triangleBatch.OnUnload();
@@ -318,6 +335,7 @@ public class SceneRenderPresenter : IDisposable
 
     public void PresentUi()
     {
+        RenderCameraUi(_triangleBatch, _triangleBatch.Arcball);
         _triangleBatch.PresentUi();
     }
 
@@ -367,14 +385,7 @@ public class SceneRenderPresenter : IDisposable
         texArray.Finish();
     }
 
-    private static void DrawPoint(DebugDrawer drawer, Vector4 pos)
-    {
-        drawer._lineBatch.Append(Vector3.UnitX * -0.15f + pos.Xyz, Vector3.UnitX * 0.15f + pos.Xyz, Color4.Pink);
-        drawer._lineBatch.Append(Vector3.UnitY * -0.15f + pos.Xyz, Vector3.UnitY * 0.15f + pos.Xyz, Color4.Pink);
-        drawer._lineBatch.Append(Vector3.UnitZ * -0.15f + pos.Xyz, Vector3.UnitZ * 0.15f + pos.Xyz, Color4.Pink);
-    }
-
-    private static unsafe void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit, DebugDrawer dbg)
+    private void PushModelTriangles(TriangleDrawer triangleDrawer, GfxEdit gfxEdit, DebugDrawer dbg)
     {
         // get all triangles from gfx active lod and push to TriangleBatch
         var gfx = gfxEdit.OpenedFile;
@@ -384,6 +395,15 @@ public class SceneRenderPresenter : IDisposable
         var lod = gfxEdit.ActiveLod;
         var camo = gfxEdit.Camouflage;
 
+        if(DrawModelSkins)
+            DrawSkinnedMeshes(triangleDrawer, gfx, lod, camo);
+
+        if(DrawModelCollision)
+            DrawCollisionVolumes(triangleDrawer, dbg, gfx, lod);
+    }
+
+    private static unsafe void DrawSkinnedMeshes(TriangleDrawer triangleDrawer, File3di gfx, int lod, CamoColor camo)
+    {
         for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
         {
             var bone = gfx._lodSubObjects[lod][iBone];
@@ -400,9 +420,10 @@ public class SceneRenderPresenter : IDisposable
                 var norms = gfx._lodNormals[lod];
                 var isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
 
-                var boneOffset = new Vector4 { X = (byte) bone.VecXoff >> 8, Y = (byte) bone.VecYoff >> 8, Z = (byte) bone.VecZoff >> 8, W = 0 };
+                var boneOffset = new Vector4
+                    { X = (byte)bone.VecXoff >> 8, Y = (byte)bone.VecYoff >> 8, Z = (byte)bone.VecZoff >> 8, W = 0 };
 
-                for(var iVertex = 0; iVertex < 3; iVertex++)
+                for (var iVertex = 0; iVertex < 3; iVertex++)
                 {
                     Vector4 segPos = gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
                     var modelPos = (segPos - boneOffset).Xyz / 256;
@@ -414,14 +435,18 @@ public class SceneRenderPresenter : IDisposable
                     var color = Color4.White;
                     color.A = isTransparent ? 0 : 1;
 
-                    var vertex = new TriangleDrawer.VertexTex(modelPos, color, normal, new Vector3(texCoords.X, texCoords.Y, triangleDrawer._renderTextures.GetIndex(texIndex)));
+                    var vertex = new TriangleDrawer.VertexTex(modelPos, color, normal,
+                        new Vector3(texCoords.X, texCoords.Y, triangleDrawer._renderTextures.GetIndex(texIndex)));
                     triangleDrawer.Append(in vertex);
                 }
             }
         }
+    }
 
+    private static void DrawCollisionVolumes(TriangleDrawer triangleDrawer, DebugDrawer dbg, File3di gfx, int lod)
+    {
         int planeIdx = 0;
-        for(var iColVol = 0; iColVol < gfx._lodColVolumes[lod].Length; iColVol++)
+        for (var iColVol = 0; iColVol < gfx._lodColVolumes[lod].Length; iColVol++)
         {
             var colVol = gfx._lodColVolumes[lod][iColVol];
 
@@ -462,7 +487,7 @@ public class SceneRenderPresenter : IDisposable
             foreach (var vert in triVerts)
             {
                 var color = new Color4(vert.normal.X, vert.normal.Y, vert.normal.Z, 0.15f);
-                var vertex = new VertexTex(vert.position, color, vert.normal, new Vector3(0, 0, 0));
+                var vertex = new TriangleDrawer.VertexTex(vert.position, color, vert.normal, new Vector3(0, 0, 0));
                 triangleDrawer.Append(in vertex);
             }
         }

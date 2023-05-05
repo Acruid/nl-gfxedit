@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 
 namespace GfxEditor;
 
-internal class GfxArrayTexture : IDisposable
+public class GfxArrayTexture : IDisposable
 {
     // https://www.khronos.org/opengl/wiki/Array_Texture
 

@@ -7,7 +7,7 @@ using OpenTK.Windowing.Common;
 
 namespace GfxEditor;
 
-internal class TriangleDrawer : IModelDrawer
+public class TriangleDrawer : IModelDrawer
 {
     public readonly Camera _camera;
     private readonly ArcballCameraController _arcball;
@@ -15,7 +15,7 @@ internal class TriangleDrawer : IModelDrawer
 
     private const int BatchSize = 1024 * 3; // 512 triangles
     private float BatchSphereRadius = 1;
-    private bool FrameNextScene = false;
+    public bool FrameNextScene = false;
 
     private int _width;
     private int _height;
@@ -41,44 +41,12 @@ internal class TriangleDrawer : IModelDrawer
         ResetCamera(_arcball);
     }
 
-    private static void ResetCamera(ArcballCameraController camera)
+    public static void ResetCamera(ArcballCameraController camera)
     {
         // angle.Y < 0
         camera.SphereicalAngles = new Vector2(0, MathHelper.DegreesToRadians(30));
         camera.SphereRadius = 4;
         camera.Camera.FieldOfView = 60f;
-    }
-
-    private void RenderCameraUi(ArcballCameraController arcBallCam)
-    {
-        ImGui.Begin("Camera");
-        {
-            var sphereAngles = arcBallCam.SphereicalAngles.ToNumeric();
-            ImGui.SliderFloat2("Rotation", ref sphereAngles, -MathF.PI, MathF.PI);
-            sphereAngles.Y = MathF.Max(0.001f, sphereAngles.Y);
-            sphereAngles.Y = MathF.Min(MathF.PI - 0.001f, sphereAngles.Y);
-            arcBallCam.SphereicalAngles = sphereAngles.ToTk();
-        }
-
-        {
-            var sphereRadius = arcBallCam.SphereRadius;
-            ImGui.InputFloat("Radius", ref sphereRadius, 0, 32);
-            arcBallCam.SphereRadius = sphereRadius;
-        }
-
-        {
-            var fov = arcBallCam.Camera.FieldOfView;
-            ImGui.SliderFloat("V FOV", ref fov, 10, 200);
-            arcBallCam.Camera.FieldOfView = fov;
-        }
-
-        if (ImGui.Button("Cam Reset"))
-            ResetCamera(arcBallCam);
-
-        if (ImGui.Button("Fit Scene"))
-            FrameNextScene = true;
-
-        ImGui.End();
     }
 
     public void OnLoad()
@@ -273,10 +241,7 @@ internal class TriangleDrawer : IModelDrawer
 
     public void HandleText(TextInputEventArgs args) { }
 
-    public void PresentUi()
-    {
-        RenderCameraUi(_arcball);
-    }
+    public void PresentUi() { }
 
     public ArcballCameraController Arcball => _arcball;
     public float SceneSize => BatchSphereRadius;
@@ -295,18 +260,6 @@ internal class TriangleDrawer : IModelDrawer
             Color = color;
             Normal = normal;
             TexCoords = texCoords;
-        }
-    }
-
-    public readonly struct VertexDbg
-    {
-        public readonly Vector3 Position;
-        public readonly Color4 Color;
-
-        public VertexDbg(Vector3 position, Color4 color)
-        {
-            Position = position;
-            Color = color;
         }
     }
 
