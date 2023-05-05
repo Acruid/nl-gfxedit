@@ -9,7 +9,7 @@ using TiffPlanarConfiguration = TiffLibrary.TiffPlanarConfiguration;
 
 namespace GfxEditor;
 
-internal class GfxEdit
+public class GfxEdit
 {
     public event EventHandler? FileUpdated;
 

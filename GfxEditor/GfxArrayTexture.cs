@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
+using System.Reflection.Emit;
 
 namespace GfxEditor;
 
@@ -34,6 +35,13 @@ internal class GfxArrayTexture : IDisposable
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
         GL.TexParameter(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+
+        const int layer = 0;
+        texCoordScalar[layer] = Vector2.One;
+        var dbgColor = new uint[texSize.X * texSize.Y];
+        Array.Fill(dbgColor, 0xFFFFFFFF);
+        GL.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, layer, texSize.X, texSize.Y, 1, PixelFormat.Rgba, PixelType.UnsignedByte, dbgColor);
+
     }
 
     public void UploadTexture(int width, int height, int layer, byte[] texelsRgba)
@@ -94,5 +102,11 @@ internal class GfxArrayTexture : IDisposable
 
     ~GfxArrayTexture() {
         ReleaseUnmanagedResources();
+    }
+
+    public byte GetIndex(byte texIndex)
+    {
+        texIndex += 1;
+        return texIndex;
     }
 }

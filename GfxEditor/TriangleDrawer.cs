@@ -161,7 +161,7 @@ internal class TriangleDrawer : IModelDrawer
         vec3 modifiedTexCoord = vec3(fract(vTexCoord.xy) * uvScalar.xy, vTexCoord.z);
 
         //FragColor = vec4(uvScalar.xyz, 1);
-        FragColor = texture(texArray, modifiedTexCoord);
+        FragColor = vColor * texture(texArray, modifiedTexCoord);
     }
 ";
 

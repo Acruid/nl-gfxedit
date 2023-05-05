@@ -19,7 +19,7 @@ namespace GfxEditor;
 /// <summary>
 /// The MDI root OpenGL window that contains the program UI.
 /// </summary>
-internal class Window : GameWindow
+public class Window : GameWindow
 {
     private readonly GfxEdit _gfxEdit;
     private ImGuiController _controller;
