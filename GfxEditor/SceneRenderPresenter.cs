@@ -432,11 +432,10 @@ internal class SceneRenderPresenter : IDisposable
                 dbg._lineBatch.Append(-halfz + center, halfz + center, Color4.Coral);
             }
 
+            var aabbMin = new Vector3(colVol.xMin, colVol.yMin, colVol.zMin);
+            var aabbMax = new Vector3(colVol.xMax, colVol.yMax, colVol.zMax);
             {
-                var min = new Vector3(colVol.xMin, colVol.yMin, colVol.zMin);
-                var max = new Vector3(colVol.xMax, colVol.yMax, colVol.zMax);
-
-                DrawBox(dbg._lineBatch, min, max, Color4.White);
+                //DrawBox(dbg._lineBatch, aabbMin, aabbMax, Color4.White);
             }
 
             for (var iColPlane = 0; iColPlane < colVol.nColPlanes; iColPlane++)
@@ -446,14 +445,10 @@ internal class SceneRenderPresenter : IDisposable
 
                 var normal = new Vector3(plane.x / 16384.0f, plane.y / 16384.0f, plane.z / 16384.0f);
                 var distance = -plane.distance / 256f;
-                var verts = PlaneToVerts(normal, distance);
-
-                // draw square
-                var color = new Color4(normal.X, normal.Y, normal.Z, 1);
-                dbg._lineBatch.Append(verts[0], verts[1], color);
-                dbg._lineBatch.Append(verts[1], verts[2], color);
-                dbg._lineBatch.Append(verts[2], verts[3], color);
-                dbg._lineBatch.Append(verts[3], verts[0], color);
+                
+                 var color = new Color4(normal.X, normal.Y, normal.Z, 1);
+                var verts = ClipPlaneToPolygon(aabbMin, aabbMax, normal, distance);
+                DrawPolygon(dbg._lineBatch, verts.ToList(), color);
             }
         }
     }
@@ -518,5 +513,134 @@ internal class SceneRenderPresenter : IDisposable
         vertices[3] = closestPoint - v1 + v2;
 
         return vertices;
+    }
+
+    public static void DrawPolygon(LineBatch lines, List<Vector3> vertices, Color4 color)
+    {
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            Vector3 start = vertices[i];
+            Vector3 end = vertices[(i + 1) % vertices.Count];
+            lines.Append(start, end, color);
+        }
+    }
+
+    public static Vector3[] ClipPlaneToPolygon(Vector3 boxMin, Vector3 boxMax, Vector3 normal, float distance)
+    {
+        // Calculate the half extents of the box
+        Vector3 halfExtents = (boxMax - boxMin) * 0.5f;
+        Vector3 center = boxMin + halfExtents;
+
+        // Check if the plane is parallel to one of the faces of the box
+        for (int i = 0; i < 3; i++)
+        {
+            if (Math.Abs(normal[i]) == 1)
+            {
+                float d = Vector3.Dot(center, normal) - distance;
+                if (Math.Abs(Math.Abs(d) - halfExtents[i]) < 1e-6f || Math.Abs(d) < halfExtents[i])
+                {
+                    Vector3[] faceVertices = new Vector3[4];
+                    faceVertices[0] = center;
+                    faceVertices[1] = center;
+                    faceVertices[2] = center;
+                    faceVertices[3] = center;
+                    faceVertices[0][i] += Math.Sign(normal[i]) * halfExtents[i];
+                    faceVertices[1][i] += Math.Sign(normal[i]) * halfExtents[i];
+                    faceVertices[2][i] += Math.Sign(normal[i]) * halfExtents[i];
+                    faceVertices[3][i] += Math.Sign(normal[i]) * halfExtents[i];
+                    int i1 = (i + 1) % 3;
+                    int i2 = (i + 2) % 3;
+                    faceVertices[0][i1] += halfExtents[i1];
+                    faceVertices[1][i1] -= halfExtents[i1];
+                    faceVertices[2][i1] -= halfExtents[i1];
+                    faceVertices[3][i1] += halfExtents[i1];
+                    faceVertices[0][i2] += halfExtents[i2];
+                    faceVertices[1][i2] += halfExtents[i2];
+                    faceVertices[2][i2] -= halfExtents[i2];
+                    faceVertices[3][i2] -= halfExtents[i2];
+                    return faceVertices;
+                }
+            }
+        }
+
+        // Find the intersection points of the plane with the edges of the box
+        List<Vector3> intersectionPointsList = new List<Vector3>();
+        Vector3[] boxVertices = new Vector3[8];
+        boxVertices[0] = new Vector3(boxMin.X, boxMin.Y, boxMin.Z);
+        boxVertices[1] = new Vector3(boxMax.X, boxMin.Y, boxMin.Z);
+        boxVertices[2] = new Vector3(boxMax.X, boxMax.Y, boxMin.Z);
+        boxVertices[3] = new Vector3(boxMin.X, boxMax.Y, boxMin.Z);
+        boxVertices[4] = new Vector3(boxMin.X, boxMin.Y, boxMax.Z);
+        boxVertices[5] = new Vector3(boxMax.X, boxMin.Y, boxMax.Z);
+        boxVertices[6] = new Vector3(boxMax.X, boxMax.Y, boxMax.Z);
+        boxVertices[7] = new Vector3(boxMin.X, boxMax.Y, boxMax.Z);
+        int[,] boxEdges = new int[,] { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
+        for (int i = 0; i < 12; i++)
+        {
+            Vector3 edgeStart = boxVertices[boxEdges[i, 0]];
+            Vector3 edgeEnd = boxVertices[boxEdges[i, 1]];
+            Vector3 edgeDirection = edgeEnd - edgeStart;
+            float denominator = Vector3.Dot(normal, edgeDirection);
+            if (Math.Abs(denominator) > float.Epsilon)
+            {
+                float t = (-distance - Vector3.Dot(normal, edgeStart)) / denominator;
+                if (t >= 0 && t <= 1)
+                {
+                    Vector3 intersectionPoint = edgeStart + t * edgeDirection;
+                    intersectionPointsList.Add(intersectionPoint);
+                }
+            }
+        }
+
+        List<Vector3> sortedIntersectionPointsList = SortVertices(intersectionPointsList, normal);
+
+        // Return the sorted intersection points as an array
+        return sortedIntersectionPointsList.ToArray();
+    }
+
+    public static List<Vector3> SortVertices(List<Vector3> vertices, Vector3 normal)
+    {
+        // Calculate the center of the vertices
+        Vector3 center = Vector3.Zero;
+        foreach (Vector3 vertex in vertices)
+        {
+            center += vertex;
+        }
+        center /= vertices.Count;
+
+        // Project the vertices onto a plane perpendicular to the normal
+        Vector3 planeTangent = Vector3.Cross(normal, new Vector3(1f, 0f, 0f));
+        if (planeTangent.LengthSquared < 1e-6f)
+        {
+            planeTangent = Vector3.Cross(normal, new Vector3(0f, 1f, 0f));
+        }
+        planeTangent.Normalize();
+        Vector3 planeBitangent = Vector3.Cross(normal, planeTangent);
+
+        // Calculate the 2D positions of the projected vertices
+        List<Vector2> projectedVertices = new List<Vector2>();
+        foreach (Vector3 vertex in vertices)
+        {
+            Vector2 projectedVertex = new Vector2(Vector3.Dot(vertex - center, planeTangent), Vector3.Dot(vertex - center, planeBitangent));
+            projectedVertices.Add(projectedVertex);
+        }
+
+        // Sort the projected vertices in clockwise order around their center
+        projectedVertices.Sort((a, b) =>
+        {
+            float angleA = MathF.Atan2(a.Y, a.X);
+            float angleB = MathF.Atan2(b.Y, b.X);
+            return angleA.CompareTo(angleB);
+        });
+
+        // Create a new list of sorted vertices
+        List<Vector3> sortedVertices = new List<Vector3>();
+        foreach (Vector2 projectedVertex in projectedVertices)
+        {
+            Vector3 vertex = center + projectedVertex.X * planeTangent + projectedVertex.Y * planeBitangent;
+            sortedVertices.Add(vertex);
+        }
+
+        return sortedVertices;
     }
 }
