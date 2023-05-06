@@ -161,6 +161,8 @@ public class SceneRenderPresenter : IDisposable
         if(_triangleBatch is not null && _triangleBatch._renderTextures is not null)
             PushModelTriangles(_triangleBatch, _model, _dbgDrawer);
 
+        _anmTimeAccumulator += dt;
+
         UpdateCameraDrag(dt);
         _dbgDrawer.Update(dt);
 
@@ -402,8 +404,11 @@ public class SceneRenderPresenter : IDisposable
             DrawCollisionVolumes(triangleDrawer, dbg, gfx, lod);
     }
 
-    private static unsafe void DrawSkinnedMeshes(TriangleDrawer triangleDrawer, File3di gfx, int lod, CamoColor camo)
+    private TimeSpan _anmTimeAccumulator = TimeSpan.Zero;
+    private unsafe void DrawSkinnedMeshes(TriangleDrawer triangleDrawer, File3di gfx, int lod, CamoColor camo)
     {
+        var header = gfx._lodHeaders[lod];
+
         for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
         {
             var bone = gfx._lodSubObjects[lod][iBone];
@@ -416,6 +421,18 @@ public class SceneRenderPresenter : IDisposable
                 var face = gfx._lodFaces[lod][i + foff];
                 var material = gfx._lodMaterials[lod][face.MaterialIndex];
                 var texIndex = material.TexIndex(camo);
+                
+                bool animated = (material.Transparentflag & 0b0100_0000) != 0;
+                if(animated)
+                {
+                    var nFrames = header.texLoopCount;
+                    var frameDelay = header.loopInterval;
+
+                    const int gfxFps = 60;
+                    var frames = _anmTimeAccumulator.TotalSeconds * gfxFps / frameDelay;
+                    texIndex = (byte)(frames % nFrames);
+                }
+
                 var texture = gfx._textures[texIndex];
                 var norms = gfx._lodNormals[lod];
                 var isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
@@ -433,10 +450,10 @@ public class SceneRenderPresenter : IDisposable
                     var texCoords = new Vector2(face.texCoordU[iVertex] / 65536.0f, face.texCoordV[iVertex] / 65536.0f);
 
                     var color = Color4.White;
-                    color.A = isTransparent ? 0 : 1;
+                    color.A = isTransparent ? 0.99f : 1; //TODO: There needs to be a better way to signal this, check the tex?
 
                     var vertex = new TriangleDrawer.VertexTex(modelPos, color, normal,
-                        new Vector3(texCoords.X, texCoords.Y, triangleDrawer._renderTextures.GetIndex(texIndex)));
+                        new Vector3(texCoords.X, texCoords.Y, texIndex + 1));
                     triangleDrawer.Append(in vertex);
                 }
             }

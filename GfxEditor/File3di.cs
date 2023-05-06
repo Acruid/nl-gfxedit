@@ -365,22 +365,18 @@ public sealed class File3di
     {
         public fixed byte name[16];
 
-        private readonly byte BitFlags; //v,r flags for some type of setup
+        public byte BitFlags;        //v,r flags for some type of setup
+        public byte Transparentflag; //v,r something with transparent texture strides
 
-        private fixed byte pad0[3]; //v,n padding for the bitflags
+        private fixed byte pad0[2]; //v,n padding for the bitflags
 
         private readonly uint gap14; //u
 
         private fixed uint null0[7]; //
 
-        private fixed byte texIndex[4]; // index of texture to use
+        private fixed byte texIndex[4]; // index of camo texture to use (Green, Brown, White, Alpha)
         public byte TexIndex(CamoColor camo) => texIndex[(byte) camo];
-
-        //public byte IndexG; // index of texture to use
-        //private readonly byte IndexB; // index of texture to use
-        //private readonly byte IndexW; // index of texture to use
-        //private readonly byte IndexA; //
-
+        
         private fixed uint null1[16]; //
     }
 
