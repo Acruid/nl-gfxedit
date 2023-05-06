@@ -121,7 +121,8 @@ public class SceneRenderPresenter : IDisposable
     }
 
     public bool DrawModelSkins { get; set; } = true;
-    public bool DrawModelCollision { get; set; } = false;
+    public bool DrawModelCollision { get; set; }
+    public bool DrawModelSkeleton { get; set; }
 
     private Vector2i _lastClientPointerPosition;
     private Vector2i GetCursorPosition()
@@ -324,6 +325,10 @@ public class SceneRenderPresenter : IDisposable
         ImGui.Checkbox("Draw Collision", ref toggle);
         DrawModelCollision = toggle;
 
+        toggle = DrawModelSkeleton;
+        ImGui.Checkbox("Draw Skeleton", ref toggle);
+        DrawModelSkeleton = toggle;
+
         ImGui.End();
     }
 
@@ -402,6 +407,9 @@ public class SceneRenderPresenter : IDisposable
 
         if(DrawModelCollision)
             DrawCollisionVolumes(triangleDrawer, dbg, gfx, lod);
+
+        if (DrawModelSkeleton)
+            DrawBones(dbg, gfx, lod);
     }
 
     private TimeSpan _anmTimeAccumulator = TimeSpan.Zero;
@@ -487,14 +495,14 @@ public class SceneRenderPresenter : IDisposable
                 DrawBox(dbg._lineBatch, aabbMin, aabbMax, Color4.LightSkyBlue);
             }
 
-            var planes = new List<(Vector3 normal, float distance)>(colVol.nColPlanes);
-            for (var iColPlane = 0; iColPlane < colVol.nColPlanes; iColPlane++)
+            var planes = new List<(Vector3 normal, float distance)>(colVol.CollisionPlaneCount);
+            for (var iColPlane = 0; iColPlane < colVol.CollisionPlaneCount; iColPlane++)
             {
                 var plane = gfx._lodColPlanes[lod][planeIdx];
                 planeIdx++;
 
-                var normal = new Vector3(plane.x / 16384.0f, plane.y / 16384.0f, plane.z / 16384.0f);
-                var distance = -plane.distance / 256f;
+                var normal = new Vector3(plane.x, plane.y, plane.z);
+                var distance = -plane.distance;
                 planes.Add((normal, distance));
             }
 
@@ -523,6 +531,11 @@ public class SceneRenderPresenter : IDisposable
                 lineBatch.Append(triVerts[i + 2].position, triVerts[i].position, color);
             }
         }
+    }
+
+    private static void DrawBones(DebugDrawer dbg, File3di gfx, int lod)
+    {
+
     }
 
     private static void DrawBox(LineBatch lines, Vector3 min, Vector3 max, Color4 color)

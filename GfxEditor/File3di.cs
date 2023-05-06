@@ -185,30 +185,46 @@ public sealed class File3di
     #region Binary Structs
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public readonly struct Fixed
+    public readonly struct FixedQ15_16
     {
-        //Q15.16
-        public readonly int Value;
+        private const float Fractional = 1 << 16;
 
-        public Fixed(int value)
-        {
-            Value = value;
-        }
+        private readonly int RawValue; //Q15.16
 
-        public static implicit operator float(Fixed val)
-        {
-            return val.Value / 65536f;
-        }
+        public FixedQ15_16(int rawValue) => RawValue = rawValue;
 
-        public static explicit operator Fixed(float val)
-        {
-            return new Fixed((int)Math.Round(val * 65536.0f));
-        }
+        public static implicit operator float(FixedQ15_16 val) => val.RawValue / Fractional;
+        public static explicit operator FixedQ15_16(float val) => new((int)Math.Round(val * Fractional));
 
-        public override string ToString()
-        {
-            return $"{(float)this:F3}";
-        }
+        public override string ToString() => $"{(float)this:F5}";
+    }
+
+    public readonly struct FixedQ1_14
+    {
+        private const float Fractional = 1 << 14;
+
+        private readonly short RawValue; //Q1.14
+
+        public FixedQ1_14(short rawValue) => RawValue = rawValue;
+
+        public static implicit operator float(FixedQ1_14 val) => val.RawValue / Fractional;
+        public static explicit operator FixedQ1_14(float val) => new((short)Math.Round(val * Fractional));
+
+        public override string ToString() => $"{(float)this:F5}";
+    }
+
+    public readonly struct FixedQ8_8
+    {
+        private const float Fractional = 1 << 8;
+
+        private readonly short RawValue; //Q8.8
+
+        public FixedQ8_8(short rawValue) => RawValue = rawValue;
+
+        public static implicit operator float(FixedQ8_8 val) => val.RawValue / Fractional;
+        public static explicit operator FixedQ8_8(float val) => new((short)Math.Round(val * Fractional));
+
+        public override string ToString() => $"{(float)this:F5}";
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -465,10 +481,10 @@ public sealed class File3di
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct COL_PLANE
     {
-        public short x;
-        public short y;
-        public short z;
-        public short distance;
+        public FixedQ1_14 x;
+        public FixedQ1_14 y;
+        public FixedQ1_14 z;
+        public FixedQ8_8 distance;
     }
 
     public enum CollisionVolumeType : uint
@@ -486,29 +502,29 @@ public sealed class File3di
 
         int gap0;
 
-        public Fixed XMedian;
-        public Fixed YMedian;
-        public Fixed ZMedian;
+        public FixedQ15_16 XMedian;
+        public FixedQ15_16 YMedian;
+        public FixedQ15_16 ZMedian;
 
-        public Fixed BoundingSphere1;
-        public Fixed BoundingSphere2;
-        public Fixed BoundingSphere3;
+        public FixedQ15_16 BoundingSphere1;
+        public FixedQ15_16 BoundingSphere2;
+        public FixedQ15_16 BoundingSphere3;
 
-        public Fixed HalfLength;
-        public Fixed HalfWidth;
-        public Fixed HalfHeight;
+        public FixedQ15_16 HalfLength;
+        public FixedQ15_16 HalfWidth;
+        public FixedQ15_16 HalfHeight;
 
         int gap1;
 
-        public Fixed xMin;
-        public Fixed xMax;
-        public Fixed yMin;
-        public Fixed yMax;
-        public Fixed zMin;
-        public Fixed zMax;
+        public FixedQ15_16 xMin;
+        public FixedQ15_16 xMax;
+        public FixedQ15_16 yMin;
+        public FixedQ15_16 yMax;
+        public FixedQ15_16 zMin;
+        public FixedQ15_16 zMax;
 
-        public int nColPlanes;        //v,r number of colPlanes that belong to this
-        int PTR_ColPlaneGroup; //v,w group of colPlanes that belog to this
+        public int CollisionPlaneCount;
+        int gap2;
     }
 
     public enum FileVersion : uint
