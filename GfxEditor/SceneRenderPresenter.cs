@@ -476,15 +476,15 @@ public class SceneRenderPresenter : IDisposable
                 var halfy = Vector3.UnitY * 0.15f;
                 var halfz = Vector3.UnitZ * 0.15f;
 
-                dbg._lineBatch.Append(-halfx + center, halfx + center, Color4.Coral);
-                dbg._lineBatch.Append(-halfy + center, halfy + center, Color4.Coral);
-                dbg._lineBatch.Append(-halfz + center, halfz + center, Color4.Coral);
+                dbg._lineBatch.Append(-halfx + center, halfx + center, Color4.LightSkyBlue);
+                dbg._lineBatch.Append(-halfy + center, halfy + center, Color4.LightSkyBlue);
+                dbg._lineBatch.Append(-halfz + center, halfz + center, Color4.LightSkyBlue);
             }
 
             var aabbMin = new Vector3(colVol.xMin, colVol.yMin, colVol.zMin);
             var aabbMax = new Vector3(colVol.xMax, colVol.yMax, colVol.zMax);
             {
-                DrawBox(dbg._lineBatch, aabbMin, aabbMax, Color4.White);
+                DrawBox(dbg._lineBatch, aabbMin, aabbMax, Color4.LightSkyBlue);
             }
 
             var planes = new List<(Vector3 normal, float distance)>(colVol.nColPlanes);
@@ -501,11 +501,26 @@ public class SceneRenderPresenter : IDisposable
             var volVerts = PlanesToVertices(planes);
             var triVerts = ConvexHull3D.CreateConvexHull(volVerts);
 
+            var color = Color4.LightSkyBlue;
+            color.A = 0.15f;
+
             foreach (var vert in triVerts)
             {
-                var color = new Color4(vert.normal.X, vert.normal.Y, vert.normal.Z, 0.15f);
                 var vertex = new TriangleDrawer.VertexTex(vert.position, color, vert.normal, new Vector3(0, 0, 0));
                 triangleDrawer.Append(in vertex);
+            }
+
+            if(triVerts.Count == 0) continue;
+            var lineBatch = dbg._lineBatch;
+            color = Color4.DeepSkyBlue;
+            for (int i = 0; i < triVerts.Count; i += 3)
+            {
+                // Draw the first edge
+                lineBatch.Append(triVerts[i].position, triVerts[i + 1].position, color);
+                // Draw the second edge
+                lineBatch.Append(triVerts[i + 1].position, triVerts[i + 2].position, color);
+                // Draw the third edge
+                lineBatch.Append(triVerts[i + 2].position, triVerts[i].position, color);
             }
         }
     }
