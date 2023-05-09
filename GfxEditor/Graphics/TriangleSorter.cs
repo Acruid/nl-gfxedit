@@ -3,8 +3,7 @@ using System.Runtime.InteropServices;
 
 using Vertex = GfxEditor.TriangleDrawer.VertexTex;
 
-namespace GfxEditor;
-
+namespace GfxEditor.Graphics;
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 internal struct Triangle

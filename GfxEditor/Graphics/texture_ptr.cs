@@ -1,4 +1,4 @@
-﻿namespace GfxEditor;
+﻿namespace GfxEditor.Graphics;
 
 public readonly struct texture_ptr : IEquatable<texture_ptr>
 {

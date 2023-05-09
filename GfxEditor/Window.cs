@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using CommunityToolkit.HighPerformance;
 using Engine.ImGuiBindings;
+using GfxEditor.Graphics;
 using ImGuiNET;
 using Nez.ImGuiTools;
 using OpenTK.Graphics.OpenGL;

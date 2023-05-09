@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using Engine.Graphics;
-using ImGuiNET;
+using GfxEditor.Graphics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -52,12 +52,10 @@ public class TriangleDrawer : IModelDrawer
     public void OnLoad()
     {
         // Create Vertex Array Object
-        _modelVAO = GL.GenVertexArray();
-        GL.BindVertexArray(_modelVAO);
+        _modelVAO = vao_ptr.GenerateBound("TriangleBatch");
 
         // Create Vertex Buffer Object
-        _modelVBO = GL.GenBuffer();
-        GL.BindBuffer(BufferTarget.ArrayBuffer, _modelVBO);
+        _modelVBO = vbo_ptr.GenBufferBound(BufferTarget.ArrayBuffer, "TriangleBatch");
         GL.BufferData(BufferTarget.ArrayBuffer, _vertices.Length * Marshal.SizeOf<VertexTex>(), IntPtr.Zero, BufferUsageHint.StreamDraw);
 
         // Set up Vertex Attribute Pointers

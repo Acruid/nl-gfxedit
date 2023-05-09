@@ -1,6 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL;
 
-namespace GfxEditor;
+namespace GfxEditor.Graphics;
 
 internal static class GlError
 {

@@ -1,5 +1,5 @@
 ﻿using System;
-using OpenTK.Graphics.OpenGL4;
+using OpenTK.Graphics.OpenGL;
 
 namespace Engine.Graphics;
 
@@ -18,7 +18,7 @@ public readonly struct vao_ptr : IEquatable<vao_ptr>
         return new vao_ptr(GL.GenVertexArray());
     }
 
-    public static vao_ptr Generate(string name)
+    public static vao_ptr GenerateBound(string name)
     {
         var array = GL.GenVertexArray();
         GL.BindVertexArray(array);
@@ -98,7 +98,7 @@ public readonly struct vbo_ptr : IEquatable<vbo_ptr>
         return new vbo_ptr(GL.GenBuffer());
     }
 
-    public static vbo_ptr GenBuffer(BufferTarget bindTarget, string name)
+    public static vbo_ptr GenBufferBound(BufferTarget bindTarget, string name)
     {
         var buffer = GL.GenBuffer();
         GL.BindBuffer(bindTarget, buffer);

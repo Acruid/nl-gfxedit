@@ -22,7 +22,7 @@ namespace Engine.Graphics
             _stride = Marshal.SizeOf(typeof(DebugVertex));
 
             // create a VAO and set up a VBO inside of it
-            _vao = vao_ptr.Generate("LineBatch");
+            _vao = vao_ptr.GenerateBound("LineBatch");
             GL.BindVertexArray(_vao);
             {
                 // create a VBO
