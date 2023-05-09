@@ -42,11 +42,7 @@ public class SceneRenderPresenter : IDisposable
         _textDrawer = new TextDrawer(_triangleBatch._camera);
         _textDrawer.Initialize();
 
-        model.FileUpdated += (_, _) =>
-        {
-            RebuildTextures();
-            _triangleBatch.FrameScene();
-        };
+        model.FileUpdated += (_, _) => { RebuildScene(); };
 
         // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-how-can-i-tell-whether-to-dispatch-mousekeyboard-to-dear-imgui-or-my-application
 
@@ -118,6 +114,17 @@ public class SceneRenderPresenter : IDisposable
             if (!io.WantTextInput)
                 _triangleBatch.HandleText(args);
         };
+
+        RebuildScene();
+    }
+
+    private void RebuildScene()
+    {
+        if(_model.OpenedFile is null)
+            return;
+
+        RebuildTextures();
+        _triangleBatch.FrameScene();
     }
 
     public bool DrawModelSkins { get; set; } = true;

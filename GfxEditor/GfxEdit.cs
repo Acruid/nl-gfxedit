@@ -31,12 +31,15 @@ public class GfxEdit
         if (!fileInfo.Exists)
             return;
 
-        OpenedFile = new File3di();
-
-        OpenFileInfo = fileInfo;
         using var stream = fileInfo.OpenRead();
         using var reader = new BinaryReader(stream);
-        OpenedFile.ReadFile(reader);
+
+        var newFile = new File3di();
+        if (!newFile.ReadFile(reader))
+            return;
+
+        OpenFileInfo = fileInfo;
+        OpenedFile = newFile;
         FileDirty();
     }
 

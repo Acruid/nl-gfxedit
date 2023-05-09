@@ -8,6 +8,7 @@ using Nez.ImGuiTools;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Common.Input;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using static GfxEditor.File3di;
@@ -413,7 +414,7 @@ public class Window : GameWindow
     protected override void OnRenderFrame(FrameEventArgs e)
     {
         base.OnRenderFrame(e);
-
+        
         _controller.Update(this, (float)e.Time);
 
         GL.ClearColor(new Color4(0, 32, 48, 255));
@@ -502,7 +503,6 @@ public class Window : GameWindow
                 var picker = FilePicker.GetFilePicker(this, startingPath, ".3di");
                 if (picker.Draw())
                 {
-                    Console.WriteLine(picker.SelectedFile);
                     _gfxEdit.LoadFile(new FileInfo(picker.SelectedFile));
                     FilePicker.RemoveFilePicker(this);
                 }
@@ -559,6 +559,15 @@ public class Window : GameWindow
         base.OnMouseWheel(e);
 
         _controller.MouseScroll(e.Offset);
+    }
+
+    protected override void OnFileDrop(FileDropEventArgs e)
+    {
+        base.OnFileDrop(e);
+
+        var files = e.FileNames;
+        
+        _gfxEdit.LoadFile(new FileInfo(files[0]));
     }
 
     protected override void OnUnload()

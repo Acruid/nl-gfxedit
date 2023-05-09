@@ -1,6 +1,4 @@
 ﻿using CommunityToolkit.HighPerformance;
-using System.Collections.Generic;
-using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Text;
 using OpenTK.Mathematics;
@@ -27,7 +25,7 @@ public sealed class File3di
 
     public File3di()
     {
-        _header.Signature = (uint) FileVersion.V8;
+        _header.Signature = FileVersion.V8;
         _header.RenderType = LodRenderType_V8.GENERIC;
         _header.Precision = 16;
 
@@ -46,15 +44,20 @@ public sealed class File3di
         _lodColVolumes = new(_header.nLODs);
     }
 
-    public unsafe void ReadFile(BinaryReader reader)
+    public unsafe bool ReadFile(BinaryReader reader)
     {
         fixed (HEADER* ptr = &_header)
         {
             var span = new Span<byte>(ptr, Marshal.SizeOf<HEADER>());
-            reader.Read(span);
+            var bytes = reader.Read(span);
+
+            if (bytes != Marshal.SizeOf<HEADER>())
+                return false;
         }
 
         //TODO: Check signature
+        if (_header.Signature != FileVersion.V8)
+            return false;
 
         var texCount = reader.ReadInt32();
         _textures = new List<TEXTURE>(texCount);
@@ -100,6 +103,8 @@ public sealed class File3di
             var colVolumes = new COL_VOLUME[lodHeader.nColVolumes]; reader.Read(colVolumes.AsSpan().AsBytes()); _lodColVolumes.Add(colVolumes);
             var materials = new ModelMaterial[lodHeader.nMaterials]; reader.Read(materials.AsSpan().AsBytes()); _lodMaterials.Add(materials);
         }
+
+        return true;
     }
 
     public unsafe void WriteFile(BinaryWriter writer)
@@ -230,7 +235,7 @@ public sealed class File3di
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct HEADER
     {
-        public uint Signature;
+        public FileVersion Signature;
 
         // assumed to be ASCII encoded text bytes
         private fixed byte name[0xC];
