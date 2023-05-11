@@ -19,6 +19,11 @@ public class GfxEdit
     public int ActiveLod { get; set; }
     public File3di.CamoColor Camouflage { get; set; } = File3di.CamoColor.Green;
 
+    public void OpenDirectory(DirectoryInfo directoryInfo)
+    {
+        //TODO: Implement me!
+    }
+
     public void NewFile()
     {
         OpenFileInfo = null;

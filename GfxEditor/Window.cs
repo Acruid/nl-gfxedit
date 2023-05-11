@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 using CommunityToolkit.HighPerformance;
 using Engine.ImGuiBindings;
 using GfxEditor.Graphics;
+using GfxEditor.ImGuiTools;
 using ImGuiNET;
-using Nez.ImGuiTools;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -223,7 +223,7 @@ public class Window : GameWindow
         {
             var n = GfxTextureWindow_SelectedTexIdx;
             var texture = _textures[n];
-            var name = FilePicker.SanitizeFileName($"{texture.Name}.TIF");
+            var name = ImGuiComDlg.SanitizeFileName($"{texture.Name}.TIF");
             _gfxEdit.ExportImage(GfxTextureWindow_SelectedTexIdx, new FileInfo(name));
         }
 
@@ -233,7 +233,7 @@ public class Window : GameWindow
         {
             foreach (var texture in _textures)
             {
-                var name = FilePicker.SanitizeFileName($"{texture.Name}.TIF");
+                var name = ImGuiComDlg.SanitizeFileName($"{texture.Name}.TIF");
                 _gfxEdit.ExportImage(GfxTextureWindow_SelectedTexIdx, new FileInfo(name));
             }
         }
@@ -411,6 +411,7 @@ public class Window : GameWindow
 
     private bool _showGameDirModal = false;
     private bool _showOpenGfxModal = false;
+    private bool _showSaveAsGfxModal = false;
 
     protected override void OnRenderFrame(FrameEventArgs e)
     {
@@ -444,9 +445,9 @@ public class Window : GameWindow
             }
 
             // Add a save item to the file menu.
-            if (ImGui.MenuItem("Save"))
+            if (ImGui.MenuItem("Save As..."))
             {
-                // Do something.
+                _showSaveAsGfxModal = true;
             }
 
             // Add a exit item to the file menu.
@@ -475,69 +476,53 @@ public class Window : GameWindow
         GlError.Check();
         _controller.EndDockspace();
 
-        if (_showGameDirModal)
         {
-            ImGui.OpenPopup("file-open-GameDir");
-
-            if (ImGui.BeginPopupModal("file-open-GameDir", ref _showGameDirModal, ImGuiWindowFlags.NoTitleBar))
+            if (ImGuiComDlg.ShowModalDialog("modal-comItemDlg", ref _showGameDirModal, ComDlgType.FolderSelectDialog))
             {
-                var picker = FilePicker.GetFolderPicker(this, Path.Combine(Environment.CurrentDirectory));
-                if (picker.Draw())
+                if (ImGuiComDlg.GetLastResult() == ComDlgResult.Ok)
                 {
-                    Console.WriteLine(picker.SelectedFile);
-                    FilePicker.RemoveFilePicker(this);
+                    var fullPath = ImGuiComDlg.GetLastPath();
+                    _gfxEdit.OpenDirectory(new DirectoryInfo(fullPath));
                 }
-                ImGui.EndPopup();
             }
-
-            if (!ImGui.IsPopupOpen("file-open-GameDir"))
-                _showGameDirModal = false;
         }
 
-        if (_showOpenGfxModal)
         {
-            ImGui.OpenPopup("file-open-GfxModal");
-
-            if (ImGui.BeginPopupModal("file-open-GfxModal", ref _showOpenGfxModal, ImGuiWindowFlags.NoTitleBar))
+            //TODO: Non-const path
+            const string startingPath = @"R:\Novalogic\Documents\Archive\3DI's\TESTING 3DI's\";
+            if (ImGuiComDlg.ShowModalDialog("modal-comItemDlg", ref _showOpenGfxModal, ComDlgType.FileOpenDialog, ".3di", new DirectoryInfo(startingPath)))
             {
-                var startingPath = @"R:\Novalogic\Documents\Archive\3DI's\TESTING 3DI's\";
-                var picker = FilePicker.GetFilePicker(this, startingPath, ".3di");
-                if (picker.Draw())
+                if (ImGuiComDlg.GetLastResult() == ComDlgResult.Ok)
                 {
-                    _gfxEdit.LoadFile(new FileInfo(picker.SelectedFile));
-                    FilePicker.RemoveFilePicker(this);
+                    var fullPath = ImGuiComDlg.GetLastPath();
+                    _gfxEdit.LoadFile(new FileInfo(fullPath));
                 }
-                ImGui.EndPopup();
             }
-
-            if (!ImGui.IsPopupOpen("file-open-GfxModal"))
-                _showOpenGfxModal = false;
         }
 
-        const string OpenTexModalClass = "tex-import-tiff";
-        if (GfxTextureWindow_ShowOpenTexModal)
         {
-            ImGui.OpenPopup(OpenTexModalClass);
-
-            if (ImGui.BeginPopupModal(OpenTexModalClass, ref GfxTextureWindow_ShowOpenTexModal, ImGuiWindowFlags.NoTitleBar))
+            //TODO: Non-const path
+            const string startingPath = @"R:\Novalogic\Documents\Archive\3DI's\TESTING 3DI's\";
+            if (ImGuiComDlg.ShowModalDialog("modal-comItemDlg", ref _showSaveAsGfxModal, ComDlgType.FileSaveDialog, ".3di", new DirectoryInfo(startingPath)))
             {
-                var startingPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                var picker = FilePicker.GetFilePicker(this, startingPath, ".tif");
-                if (picker.Draw())
+                if (ImGuiComDlg.GetLastResult() == ComDlgResult.Ok)
                 {
-                    Console.WriteLine(picker.SelectedFile);
-
-                    //TODO: Import Tex
-                    var file = new FileInfo(picker.SelectedFile);
-                    _gfxEdit.ReplaceTexture(GfxTextureWindow_SelectedTexIdx, file);
-
-                    FilePicker.RemoveFilePicker(this);
+                    var fullPath = ImGuiComDlg.GetLastPath();
+                    _gfxEdit.SaveFile(new FileInfo(fullPath));
                 }
-                ImGui.EndPopup();
             }
+        }
 
-            if (!ImGui.IsPopupOpen(OpenTexModalClass))
-                GfxTextureWindow_ShowOpenTexModal = false;
+        {
+            var startingPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (ImGuiComDlg.ShowModalDialog("modal-comItemDlg", ref GfxTextureWindow_ShowOpenTexModal, ComDlgType.FileOpenDialog, ".tif", new DirectoryInfo(startingPath)))
+            {
+                if (ImGuiComDlg.GetLastResult() == ComDlgResult.Ok)
+                {
+                    var fullPath = ImGuiComDlg.GetLastPath();
+                    _gfxEdit.ReplaceTexture(GfxTextureWindow_SelectedTexIdx, new FileInfo(fullPath));
+                }
+            }
         }
 
         _controller.Render();
