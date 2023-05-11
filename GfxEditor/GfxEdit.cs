@@ -50,7 +50,10 @@ public class GfxEdit
 
     public void SaveFile(FileInfo fileInfo)
     {
-        //TODO: Save file
+        using var stream = fileInfo.OpenWrite();
+        using var writer = new BinaryWriter(stream);
+
+        OpenedFile.WriteFile(writer);
     }
 
     public void FileDirty()

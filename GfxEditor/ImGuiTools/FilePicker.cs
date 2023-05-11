@@ -277,7 +277,8 @@ internal class FilePicker
         {
             ImGui.SameLine();
 
-            ImGui.BeginDisabled(SelectedFile is null);
+            var savePath = Path.Combine(CurrentFolder.FullName, SelectedFile ?? string.Empty);
+            ImGui.BeginDisabled(SelectedFile is null || Directory.Exists(savePath));
             if (ImGui.Button(btnName))
             {
                 result = true;
@@ -296,17 +297,32 @@ internal class FilePicker
                 if(_dlgType != ComDlgType.FolderSelectDialog)
                 {
                     var file = new FileInfo(str);
-                    if (file.Exists)
+
+                    if(_dlgType == ComDlgType.FileOpenDialog)
                     {
-                        result = true;
-                        FullPath = file.FullName;
-                        ImGui.CloseCurrentPopup();
+                        if (file.Exists)
+                        {
+                            result = true;
+                            FullPath = file.FullName;
+                            ImGui.CloseCurrentPopup();
+                        }
+                        else if (File.Exists(Path.Combine(CurrentFolder.FullName, str)))
+                        {
+                            result = true;
+                            FullPath = Path.Combine(CurrentFolder.FullName, str);
+                            ImGui.CloseCurrentPopup();
+                        }
                     }
-                    else if (File.Exists(Path.Combine(CurrentFolder.FullName, str)))
+                    else if (_dlgType == ComDlgType.FileSaveDialog)
                     {
-                        result = true;
-                        FullPath = Path.Combine(CurrentFolder.FullName, str);
-                        ImGui.CloseCurrentPopup();
+                        // can't save over folders
+                        var filePath = Path.Combine(CurrentFolder.FullName, str);
+                        if (!Directory.Exists(filePath))
+                        {
+                            result = true;
+                            FullPath = filePath;
+                            ImGui.CloseCurrentPopup();
+                        }
                     }
                     else if (Directory.Exists(file.FullName))
                     {
