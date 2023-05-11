@@ -363,6 +363,9 @@ public class SceneRenderPresenter : IDisposable
             maxTexSize = Vector2i.ComponentMax(maxTexSize, new Vector2i(texture.bmWidth, texture.bmHeight));
         }
 
+        if (textures.Count == 0)
+            maxTexSize = new Vector2i(64, 64);
+
         // Allocate array textures
         if (_triangleBatch._renderTextures is not null)
         {

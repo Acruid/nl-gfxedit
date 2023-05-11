@@ -239,4 +239,13 @@ public class GfxEdit
     {
         return (n > 0) && ((n & (n - 1)) == 0);
     }
+
+    public int AddTexture()
+    {
+        var idx = OpenedFile._textures.Count;
+        OpenedFile._textures.Add(new File3di.TEXTURE());
+        OpenedFile._bmLines.Add(Array.Empty<byte>());
+        OpenedFile._palettes.Add(Array.Empty<File3di.RGBA>());
+        return idx;
+    }
 }

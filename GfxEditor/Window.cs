@@ -1,6 +1,4 @@
-﻿using System;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using CommunityToolkit.HighPerformance;
 using Engine.ImGuiBindings;
 using GfxEditor.Graphics;
@@ -9,9 +7,7 @@ using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Common.Input;
 using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
 using static GfxEditor.File3di;
 using static OpenTK.Graphics.OpenGL.GL;
 using NVec2 = System.Numerics.Vector2;
@@ -431,7 +427,7 @@ public class Window : GameWindow
             // Add a new item to the file menu.
             if (ImGui.MenuItem("New"))
             {
-                // Do something.
+                _gfxEdit.NewFile();
             }
 
             if (ImGui.MenuItem("Open Game Directory..."))
@@ -520,6 +516,11 @@ public class Window : GameWindow
                 if (ImGuiComDlg.GetLastResult() == ComDlgResult.Ok)
                 {
                     var fullPath = ImGuiComDlg.GetLastPath();
+
+                    //TODO: Better insert logic
+                    if (GfxTextureWindow_SelectedTexIdx == 0 && _gfxEdit.OpenedFile._textures.Count == 0)
+                        GfxTextureWindow_SelectedTexIdx = _gfxEdit.AddTexture();
+
                     _gfxEdit.ReplaceTexture(GfxTextureWindow_SelectedTexIdx, new FileInfo(fullPath));
                 }
             }
