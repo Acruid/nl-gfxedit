@@ -409,9 +409,9 @@ public sealed class File3di
         private int PTR_VertGroup; //v,w ptr to vert data for this subObject
         public int nFaces; //v,r number of faces in sub object
         private int PTR_FaceGroup; //v,w ptr to face data of sub object
-        private int nNormals; //w,r ''
+        public int nNormals; //r,r ''
         private int PTR_NormGroup; //v,w ''
-        private int nColVolumes; //v,r ''
+        public int nColVolumes; //v,r ''
         private int PTR_ColVolumes; //v,w ''
 
         // ignore this if(lodheader.Flags & 1 == false)

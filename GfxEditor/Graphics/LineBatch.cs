@@ -56,11 +56,11 @@ namespace Engine.Graphics
             _lines.Add(new DebugVertex(endPos, color));
         }
 
-        public void Append(Vector3 position, Color color)
+        public void Append(Vector3 position, float scale, Color color)
         {
-            Append(position - Vector3.UnitX * 0.5f, position + Vector3.UnitX * 0.5f, color);
-            Append(position - Vector3.UnitY * 0.5f, position + Vector3.UnitY * 0.5f, color);
-            Append(position - Vector3.UnitZ * 0.5f, position + Vector3.UnitZ * 0.5f, color);
+            Append(position - Vector3.UnitX * scale, position + Vector3.UnitX * scale, color);
+            Append(position - Vector3.UnitY * scale, position + Vector3.UnitY * scale, color);
+            Append(position - Vector3.UnitZ * scale, position + Vector3.UnitZ * scale, color);
         }
 
         public void Append(Rectangle rect, Color color)

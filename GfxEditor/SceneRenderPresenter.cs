@@ -419,7 +419,7 @@ public class SceneRenderPresenter : IDisposable
             DrawCollisionVolumes(triangleDrawer, dbg, gfx, lod);
 
         if (DrawModelSkeleton)
-            DrawBones(dbg, gfx, lod);
+            DrawBones(dbg, gfx, lod, dbg._lineBatch);
     }
 
     private TimeSpan _anmTimeAccumulator = TimeSpan.Zero;
@@ -543,9 +543,61 @@ public class SceneRenderPresenter : IDisposable
         }
     }
 
-    private static void DrawBones(DebugDrawer dbg, File3di gfx, int lod)
+    private static void DrawBones(DebugDrawer dbg, File3di gfx, int lod, LineBatch lines)
     {
+        var header = gfx._lodHeaders[lod];
 
+        for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
+        {
+            var bone = gfx._lodSubObjects[lod][iBone];
+
+            var boneOffset = new Vector3
+            {
+                X = new FixedQ15_16(bone.VecXoff),
+                Y = new FixedQ15_16(bone.VecYoff),
+                Z = new FixedQ15_16(bone.VecZoff)
+            };
+
+            var pBone = gfx._lodSubObjects[lod][bone.parentBone];
+
+            var pBoneOffset = new Vector3
+            {
+                X = new FixedQ15_16(pBone.VecXoff),
+                Y = new FixedQ15_16(pBone.VecYoff),
+                Z = new FixedQ15_16(pBone.VecZoff)
+            };
+
+            lines.Append(pBoneOffset, boneOffset, Color4.PaleGreen);
+            lines.Append(boneOffset, 0.05f, Color4.Green);
+/*
+            var voff = gfx.VecOffset(lod, iBone); // offset into vertex array for bone
+
+            int blx = 0;
+            int bly = 0;
+            int blz = 0;
+            int bhx = 0;
+            int bhy = 0;
+            int bhz = 0;
+            
+            for(var ivert = voff; ivert < voff + bone.nVerts; ivert++)
+            {
+                var vert = gfx._lodPositions[lod][ivert];
+
+                blx = Math.Min(blx, vert.x);
+                bly = Math.Min(bly, vert.y);
+                blz = Math.Min(blz, vert.z);
+
+                bhx = Math.Max(bhx, vert.x);
+                bhy = Math.Max(bhy, vert.y);
+                bhz = Math.Max(bhz, vert.z);
+            }
+
+            var min = new Vector3(blx, bly, blz) / (1 << 8) - boneOffset;
+            var max = new Vector3(bhx, bhy, bhz) / (1 << 8) - boneOffset;
+
+            DrawBox(lines, min, max, Color4.DarkGreen);
+*/
+        }
     }
 
     private static void DrawBox(LineBatch lines, Vector3 min, Vector3 max, Color4 color)
