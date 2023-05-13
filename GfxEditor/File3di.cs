@@ -26,7 +26,7 @@ public sealed class File3di
     public File3di()
     {
         _header.Signature = FileVersion.V8;
-        _header.RenderType = LodRenderType_V8.GENERIC;
+        _header.RenderType = LodRenderType_V8.generic;
         _header.Precision = 16;
 
         _textures = new List<TEXTURE>();
@@ -540,8 +540,25 @@ public sealed class File3di
 
     public enum LodRenderType_V8 : uint
     {
-        NONE = 0x0,
-        GENERIC = 0x676E7263 //"crng"
+        generic = 0x676E7263,
+        organic = 0x6F726730,
+        tree = 0x65726574,
+        tire = 0x65726974,
+        ef3d = 0x65663364,
+        effect = 0x65666374,
+        palm = 0x6C61706D,
+        building = 0x67646C62,
+        building2 = 0x646C6232,
+        ka29 = 0x616B3239,
+        hind = 0x646E6968,
+        bird = 0x64726962,
+        penguin = 0x676E6570,
+        fish = 0x68736966,
+        tank = 0x6B6E6174,
+        brdm = 0x6D647262,
+        pungi_stick = 0x676E7570,
+        weapon = 0x6E707765,
+        helo = 0x6F6C6568
     }
 
     public enum CamoColor : byte

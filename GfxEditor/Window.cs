@@ -64,14 +64,14 @@ public class Window : GameWindow
         _gfxEdit.FileUpdated += (sender, args) =>
         {
             textureDirty = true;
-            _gfxEdit.ActiveLod = GfxTextureWindow_SelectedLodIdx = 0;
+            _gfxEdit.ActiveLod = GfxModelWindow_SelectedLodIdx = 0;
         };
 
         GlError.Check();
     }
 
     private const string GuiModelWindowClass = "Gfx Model";
-    private int GfxTextureWindow_SelectedLodIdx = 0;
+    private int GfxModelWindow_SelectedLodIdx = 0;
     private void PresentGfxModelWindow()
     {
         if (!(_gfxEdit is not null && _gfxEdit.OpenedFile is not null))
@@ -109,19 +109,19 @@ public class Window : GameWindow
         var lods = _gfxEdit.OpenedFile._lodHeaders;
 
         // prevents selected from going out of bounds when lods count changes.
-        if (GfxTextureWindow_SelectedLodIdx > lods.Count)
+        if (GfxModelWindow_SelectedLodIdx > lods.Count)
         {
-            GfxTextureWindow_SelectedLodIdx = 0;
+            GfxModelWindow_SelectedLodIdx = 0;
         }
 
         if (ImGui.BeginListBox("##UNIQUE_LBL_1", new NVec2(-1, 5 * ImGui.GetTextLineHeightWithSpacing())))
         {
             for (int iLod = 0; iLod < lods.Count; iLod++)
             {
-                bool is_selected = (GfxTextureWindow_SelectedLodIdx == iLod);
+                bool is_selected = (GfxModelWindow_SelectedLodIdx == iLod);
                 if (ImGui.Selectable($"{LodTranslate(iLod)}", is_selected))
                 {
-                    _gfxEdit.ActiveLod = GfxTextureWindow_SelectedLodIdx = iLod;
+                    _gfxEdit.ActiveLod = GfxModelWindow_SelectedLodIdx = iLod;
                 }
 
                 // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -132,7 +132,7 @@ public class Window : GameWindow
             ImGui.EndListBox();
         }
 
-        var lodIdx = GfxTextureWindow_SelectedLodIdx;
+        var lodIdx = GfxModelWindow_SelectedLodIdx;
 
         var val = header.get_MinLodDist(lodIdx);
         if (ImGui.InputInt("Min Dist", ref val))
@@ -394,6 +394,95 @@ public class Window : GameWindow
         ImGui.End();
     }
 
+
+    private const string GuiAnmWindowClass = "Animations";
+    private void PresentAnmWindow()
+    {
+        ref var header = ref _gfxEdit.OpenedFile._header;
+
+        var headers = _gfxEdit.OpenedFile._lodHeaders;
+        if (headers.Count <= 0 ||
+            /*header.RenderType != LodRenderType_V8.organic ||*/
+            ((headers[_gfxEdit.ActiveLod].Flags & LodHeaderFlags.OffsetArmatures) == 0))
+            return;
+
+        ImGui.Begin(GuiAnmWindowClass);
+
+        var disabled = true;
+
+        ImGui.Text("Load KSA...");
+        ImGui.SameLine();
+
+        var text = _gfxEdit.LoadedKsaPath ?? string.Empty;
+        if(ImGui.InputText("##KsaFileName", ref text, 260, ImGuiInputTextFlags.EnterReturnsTrue))
+        {
+            if(string.IsNullOrEmpty(text))
+            {
+                _gfxEdit.UnloadKsa();
+            }
+            if (File.Exists(text))
+            {
+                _gfxEdit.LoadKsa(text);
+            }
+        }
+
+        ImGui.Text("Load ANM...");
+        ImGui.SameLine();
+
+        text = _gfxEdit.LoadedAnmPath ?? string.Empty;
+        if (ImGui.InputText("##AnmFileName", ref text, 260, ImGuiInputTextFlags.EnterReturnsTrue))
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                _gfxEdit.UnloadAnm();
+            }
+            if (File.Exists(text))
+            {
+                _gfxEdit.LoadAnm(text);
+            }
+        }
+
+        // anm dropdown
+        if (ImGui.BeginCombo("Animation", _gfxEdit.CurrentAnimation.ToString()))
+        {
+            if (_gfxEdit.LoadedKsa is not null)
+            {
+                var values = _gfxEdit.LoadedKsa.GetAnimations();
+
+                for (var n = 0; n < values.Length; n++)
+                {
+                    var is_selected = n == _gfxEdit.CurrentAnimation;
+                    if (ImGui.Selectable(n.ToString(), is_selected))
+                    {
+                        _gfxEdit.CurrentAnimation = n;
+                    }
+
+                    if (is_selected)
+                        ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        // keyframe timeline slider
+        int frameCount;
+        if (_gfxEdit.LoadedKsa is null)
+            frameCount = 0;
+        else
+        {
+            frameCount = _gfxEdit.LoadedKsa.GetAnimations()[_gfxEdit.CurrentAnimation].numKeyframes;
+        }
+
+        var curFrame = _gfxEdit.CurrentKeyframe;
+        if(ImGui.SliderInt("TimeLine", ref curFrame, 0, frameCount))
+        {
+            _gfxEdit.CurrentKeyframe = curFrame;
+        }
+
+        ImGui.End();
+    }
+
     protected override void OnResize(ResizeEventArgs e)
     {
         base.OnResize(e);
@@ -463,6 +552,7 @@ public class Window : GameWindow
 
         PresentGfxTextureWindow();
         PresentGfxModelWindow();
+        PresentAnmWindow();
         _lodWindow.Present();
         _scene.PresentUi();
 

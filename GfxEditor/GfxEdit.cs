@@ -251,4 +251,50 @@ public class GfxEdit
         OpenedFile._palettes.Add(Array.Empty<File3di.RGBA>());
         return idx;
     }
+
+    #region Kinimatic Skeletal Animations
+
+    public string? LoadedKsaPath { get; private set; }
+    public FileKsa? LoadedKsa { get; private set; }
+    public int CurrentAnimation { get; set; }
+
+    internal void LoadKsa(string text)
+    {
+        var contents = File.ReadAllBytes(text);
+        LoadedKsa = new FileKsa(contents);
+        LoadedKsaPath = text;
+    }
+
+    internal void UnloadKsa()
+    {
+        LoadedKsa = null;
+        LoadedKsaPath = null;
+        CurrentAnimation = 0;
+    }
+
+    #endregion
+
+    #region Animation File
+
+    public string? LoadedAnmPath { get; private set; }
+    public FileAnm? LoadedAnm { get; private set; }
+    public int CurrentKeyframe { get; set; }
+
+    internal void LoadAnm(string text)
+    {
+        var contents = File.ReadAllText(text);
+
+        //TODO: Decrypt SCR
+
+        LoadedAnm = new(contents);
+        LoadedAnmPath = text;
+    }
+
+    internal void UnloadAnm()
+    {
+        LoadedAnm = null;
+        LoadedAnmPath = null;
+    }
+
+    #endregion
 }
