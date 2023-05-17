@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Collections;
 using System.Runtime.InteropServices;
 using CommunityToolkit.HighPerformance;
 using SixLabors.ImageSharp.Formats.Tiff.Constants;
@@ -282,11 +283,16 @@ public class GfxEdit
 
     internal void LoadAnm(string text)
     {
-        var contents = File.ReadAllText(text);
+        var fileBytes = File.ReadAllBytes(text);
 
-        //TODO: Decrypt SCR
+        if (ScriptFile.HasScrHeader(fileBytes))
+        {
+            ScriptFile.TryGetKey("DF2", out var key);
+            fileBytes = ScriptFile.Decrypt(fileBytes, key);
+        }
 
-        LoadedAnm = new(contents);
+        var content = System.Text.Encoding.UTF8.GetString(fileBytes);
+        LoadedAnm = new FileAnm(content);
         LoadedAnmPath = text;
     }
 

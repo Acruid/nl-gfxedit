@@ -3,7 +3,7 @@
 public readonly struct texture_ptr : IEquatable<texture_ptr>
 {
     private readonly int _value;
-
+    
     public texture_ptr(int value) => _value = value;
     public static implicit operator int(texture_ptr ptr) => ptr._value;
 

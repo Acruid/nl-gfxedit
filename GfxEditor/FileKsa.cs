@@ -27,6 +27,8 @@ public class FileKsa
     public Span<KEYFRAME> GetKeyframes()
     {
         Span<ANIMATION> animations = GetAnimations();
+
+        // TODO: const time with header.Length/anm count math
         int numKeyframes = 0;
         for (int i = 0; i < animations.Length; i++)
         {
@@ -44,8 +46,7 @@ public class FileKsa
     public unsafe struct HEADER
     {
         // Assumed to be an ASCII encoded text byte string
-        public fixed byte Signature[3];  // Signature of file
-        public byte Null;                // Skipped
+        public fixed byte Signature[4];  // Signature of file ("KSA\0")
         public int const1;               // DF2:assert(val==1), version?
                                          // Assumed to be an ASCII encoded text byte string
         public fixed byte Filename[32];  // writes the filename to here, if len > 31 this will overflow :S
@@ -61,7 +62,7 @@ public class FileKsa
     public unsafe struct ANIMATION
     {
         public int numKeyframes; // number of keyframes this animation points to
-        public int PTR_Data;     // ptr to data in mem (sum of all data before it, after records)
+        private int PTR_Data;     // ptr to data in mem (sum of all data before it, after records)
         public int nextAnmIndex; // the next ANIMATION index to play after this one is finished (same number = loops)
         public int nextAnmFrame; // the KEYFRAME index to start at when playing the next animation (1 = 2nd keyframe of ANIMATION)
                                  // the bounds are not checked, you can offset into ANY other keyframe :D
@@ -95,10 +96,10 @@ public class FileKsa
         public VEC4 legLeft;
         public VEC4 footRight;
         public VEC4 footLeft;
-        public VEC4 unk0; // assumed VEC4
-        public VEC4 unk1; // assumed VEC4
-        public short height; // height offset from ground, 0=hips,-200=feet
-        public short unk2;
-        public fixed int data[4]; // u
+        private VEC4 unk0;
+        private VEC4 unk1;
+        public short height; // height offset from ground, 0=hips,-270=feet
+        private short unk2;
+        private fixed int unk3[4]; // u
     }
 }

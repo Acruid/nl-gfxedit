@@ -5,6 +5,8 @@ using OpenTK.Mathematics;
 
 namespace GfxEditor;
 
+using Pointer = UInt32;
+
 public sealed class File3di
 {
     public HEADER _header;
@@ -218,16 +220,16 @@ public sealed class File3di
         public override string ToString() => $"{(float)this:F5}";
     }
 
-    public readonly struct FixedQ8_8
+    public readonly struct FixedQ7_8
     {
         private const float Fractional = 1 << 8;
 
-        private readonly short RawValue; //Q8.8
+        private readonly short RawValue; //Q7.8
 
-        public FixedQ8_8(short rawValue) => RawValue = rawValue;
+        public FixedQ7_8(short rawValue) => RawValue = rawValue;
 
-        public static implicit operator float(FixedQ8_8 val) => val.RawValue / Fractional;
-        public static explicit operator FixedQ8_8(float val) => new((short)Math.Round(val * Fractional));
+        public static implicit operator float(FixedQ7_8 val) => val.RawValue / Fractional;
+        public static explicit operator FixedQ7_8(float val) => new((short)Math.Round(val * Fractional));
 
         public override string ToString() => $"{(float)this:F5}";
     }
@@ -353,9 +355,20 @@ public sealed class File3di
         public short z;
         public short w;
 
+
+        public static implicit operator Vector4i(in VECTOR4 vec)
+        {
+            return new Vector4i(vec.x, vec.y, vec.z, vec.w);
+        }
+
         public static implicit operator Vector4(in VECTOR4 vec)
         {
-            return new Vector4(vec.x, vec.y, vec.z, vec.w);
+            var x = new FixedQ7_8(vec.x);
+            var y = new FixedQ7_8(vec.y);
+            var z = new FixedQ7_8(vec.z);
+            var w = new FixedQ7_8(vec.w);
+
+            return new Vector4(x, y, z, w);
         }
     }
 
@@ -406,20 +419,20 @@ public sealed class File3di
     {
         private int GAP_0;
         public int nVerts; //v,r number of verts in the subObject
-        private int PTR_VertGroup; //v,w ptr to vert data for this subObject
+        private Pointer _VertGroup; //v,w ptr to vert data for this subObject
         public int nFaces; //v,r number of faces in sub object
-        private int PTR_FaceGroup; //v,w ptr to face data of sub object
+        private Pointer _FaceGroup; //v,w ptr to face data of sub object
         public int nNormals; //r,r ''
-        private int PTR_NormGroup; //v,w ''
+        private Pointer _NormGroup; //v,w ''
         public int nColVolumes; //v,r ''
-        private int PTR_ColVolumes; //v,w ''
+        private Pointer _ColVolumes; //v,w ''
 
         // ignore this if(lodheader.Flags & 1 == false)
         public int parentBone; //v,r parent bone this is attached to
 
-        private int diffXoff; //v,w VecXOff - parentBone.VecXoff
-        private int diffYoff; //v,w VecYOff - parentBone.VecYoff
-        private int diffZoff; //v,w VecZOff - parentBone.VecZoff
+        private int _diffXoff; //v,w VecXOff - parentBone.VecXoff
+        private int _diffYoff; //v,w VecYOff - parentBone.VecYoff
+        private int _diffZoff; //v,w VecZOff - parentBone.VecZoff
 
         //v,r if(lodheader.Flags & 1)foreach vert in group, vec.x -= (VecXoff >> 8)
         public int VecXoff; //v,r
@@ -427,6 +440,14 @@ public sealed class File3di
         public int VecZoff; //v,r same as above for z
 
         private fixed int GAP_1[12];
+        
+        public readonly Vector3 ModelPosition =>
+            new()
+            {
+                X = new FixedQ15_16(VecXoff),
+                Y = new FixedQ15_16(VecYoff),
+                Z = new FixedQ15_16(VecZoff)
+            };
     }
 
     [Flags]
@@ -489,7 +510,7 @@ public sealed class File3di
         public FixedQ1_14 x;
         public FixedQ1_14 y;
         public FixedQ1_14 z;
-        public FixedQ8_8 distance;
+        public FixedQ7_8 distance;
     }
 
     public enum CollisionVolumeType : uint

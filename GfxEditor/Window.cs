@@ -401,9 +401,7 @@ public class Window : GameWindow
         ref var header = ref _gfxEdit.OpenedFile._header;
 
         var headers = _gfxEdit.OpenedFile._lodHeaders;
-        if (headers.Count <= 0 ||
-            /*header.RenderType != LodRenderType_V8.organic ||*/
-            ((headers[_gfxEdit.ActiveLod].Flags & LodHeaderFlags.OffsetArmatures) == 0))
+        if (headers.Count <= 0 || (headers[_gfxEdit.ActiveLod].Flags & LodHeaderFlags.OffsetArmatures) == 0)
             return;
 
         ImGui.Begin(GuiAnmWindowClass);
@@ -443,7 +441,21 @@ public class Window : GameWindow
         }
 
         // anm dropdown
-        if (ImGui.BeginCombo("Animation", _gfxEdit.CurrentAnimation.ToString()))
+
+        var anmValue = _gfxEdit.CurrentAnimation;
+        var anmDefs = _gfxEdit.LoadedAnm?.GetDefs();
+        string defName = string.Empty;
+        if (anmDefs is not null)
+        {
+            var def = anmDefs.FirstOrDefault(def => def.AnimationNumber == anmValue);
+            if (def.Move is not null)
+            {
+                defName = def.Move;
+            }
+        }
+        string name = $"{anmValue} {defName}";
+
+        if (ImGui.BeginCombo("Animation", name))
         {
             if (_gfxEdit.LoadedKsa is not null)
             {
@@ -451,13 +463,24 @@ public class Window : GameWindow
 
                 for (var n = 0; n < values.Length; n++)
                 {
-                    var is_selected = n == _gfxEdit.CurrentAnimation;
-                    if (ImGui.Selectable(n.ToString(), is_selected))
+                    defName = string.Empty;
+                    if (anmDefs is not null)
+                    {
+                        var def = anmDefs.FirstOrDefault(def => def.AnimationNumber == n);
+                        if (def.Move is not null)
+                        {
+                            defName = def.Move;
+                        }
+                    }
+
+                    name = $"{n} {defName}";
+                    var selected = n == _gfxEdit.CurrentAnimation;
+                    if (ImGui.Selectable(name, selected))
                     {
                         _gfxEdit.CurrentAnimation = n;
                     }
 
-                    if (is_selected)
+                    if (selected)
                         ImGui.SetItemDefaultFocus();
                 }
             }
@@ -643,8 +666,27 @@ public class Window : GameWindow
         base.OnFileDrop(e);
 
         var files = e.FileNames;
-        
-        _gfxEdit.LoadFile(new FileInfo(files[0]));
+
+        foreach (var file in files)
+        {
+            string ext = Path.GetExtension(file).ToUpperInvariant();
+            switch (ext)
+            {
+                case ".3DI":
+                    _gfxEdit.LoadFile(new FileInfo(file));
+                    break;
+
+                case ".KSA":
+                    _gfxEdit.LoadKsa(file);
+                    break;
+                    
+                case ".ANM":
+                    _gfxEdit.LoadAnm(file);
+                    break;
+
+            }
+        }
+
     }
 
     protected override void OnUnload()

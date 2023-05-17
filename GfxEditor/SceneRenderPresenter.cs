@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using System.Runtime.InteropServices;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
@@ -130,6 +131,7 @@ public class SceneRenderPresenter : IDisposable
     public bool DrawModelSkins { get; set; } = true;
     public bool DrawModelCollision { get; set; }
     public bool DrawModelSkeleton { get; set; }
+    public bool AnimateModel { get; set; }
 
     private Vector2i _lastClientPointerPosition;
     private Vector2i GetCursorPosition()
@@ -336,6 +338,9 @@ public class SceneRenderPresenter : IDisposable
         ImGui.Checkbox("Draw Skeleton", ref toggle);
         DrawModelSkeleton = toggle;
 
+        toggle = AnimateModel;
+        ImGui.Checkbox("Animate Model", ref toggle);
+        AnimateModel = toggle;
         ImGui.End();
     }
 
@@ -412,18 +417,38 @@ public class SceneRenderPresenter : IDisposable
         var lod = gfxEdit.ActiveLod;
         var camo = gfxEdit.Camouflage;
 
+        var bones = gfx._lodSubObjects[lod];
+
+        var boneMatrices = new Matrix4[bones.Length];
+        boneMatrices[0] = Matrix4.Identity;
+
+        if (TryGetKeyframe(gfxEdit, out var keyFrame))
+        {
+            float anmHeight = new FixedQ7_8(keyFrame.height);
+            ReadOnlySpan<byte> angles = MemoryMarshal.CreateSpan(ref keyFrame, 1).AsBytes().Slice(0, 15 * 4);
+            Skeleton.CalculateBoneTransforms(bones, angles, anmHeight, boneMatrices);
+        }
+        else
+        {
+            for (var i = 0; i < boneMatrices.Length; i++)
+            {
+                boneMatrices[i] = Matrix4.Identity;
+            }
+        }
+
         if(DrawModelSkins)
-            DrawSkinnedMeshes(triangleDrawer, gfx, lod, camo);
+            DrawSkinnedMeshes(triangleDrawer, gfx, lod, camo, boneMatrices);
 
         if(DrawModelCollision)
             DrawCollisionVolumes(triangleDrawer, dbg, gfx, lod);
 
-        if (DrawModelSkeleton)
-            DrawBones(dbg, gfx, lod, dbg._lineBatch);
+        if (DrawModelSkeleton) 
+            DrawSkeleton(dbg._lineBatch, bones, boneMatrices);
     }
 
     private TimeSpan _anmTimeAccumulator = TimeSpan.Zero;
-    private unsafe void DrawSkinnedMeshes(TriangleDrawer triangleDrawer, File3di gfx, int lod, CamoColor camo)
+    private unsafe void DrawSkinnedMeshes(TriangleDrawer triangleDrawer, File3di gfx, int lod, CamoColor camo,
+        Matrix4[] boneMatrices)
     {
         var header = gfx._lodHeaders[lod];
 
@@ -454,14 +479,12 @@ public class SceneRenderPresenter : IDisposable
                 var texture = gfx._textures[texIndex];
                 var norms = gfx._lodNormals[lod];
                 var isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
-
-                var boneOffset = new Vector4
-                    { X = (byte)bone.VecXoff >> 8, Y = (byte)bone.VecYoff >> 8, Z = (byte)bone.VecZoff >> 8, W = 0 };
-
+                
                 for (var iVertex = 0; iVertex < 3; iVertex++)
                 {
-                    Vector4 segPos = gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
-                    var modelPos = (segPos - boneOffset).Xyz / 256;
+                    var gfxPos = (Vector4)gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
+                    gfxPos.W = 1;
+                    var modelPos = (gfxPos * boneMatrices[iBone]).Xyz;
 
                     var normal = ((Vector4)norms[face.NormalIdx[iVertex]]).Xyz;
 
@@ -543,61 +566,43 @@ public class SceneRenderPresenter : IDisposable
         }
     }
 
-    private static void DrawBones(DebugDrawer dbg, File3di gfx, int lod, LineBatch lines)
+    private static void DrawSkeleton(LineBatch lines, ModelSegmentMesh[] bones, Matrix4[] boneMatrices)
     {
-        var header = gfx._lodHeaders[lod];
-
-        for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
+        for (var iBone = 0; iBone < bones.Length; iBone++)
         {
-            var bone = gfx._lodSubObjects[lod][iBone];
+            var bone = bones[iBone];
+            var pBone = bones[bone.parentBone];
 
-            var boneOffset = new Vector3
-            {
-                X = new FixedQ15_16(bone.VecXoff),
-                Y = new FixedQ15_16(bone.VecYoff),
-                Z = new FixedQ15_16(bone.VecZoff)
-            };
+            var bonePosition = Vector3.TransformPosition(bone.ModelPosition, boneMatrices[iBone]);
+            var pBonePosition = Vector3.TransformPosition(pBone.ModelPosition, boneMatrices[bone.parentBone]);
 
-            var pBone = gfx._lodSubObjects[lod][bone.parentBone];
-
-            var pBoneOffset = new Vector3
-            {
-                X = new FixedQ15_16(pBone.VecXoff),
-                Y = new FixedQ15_16(pBone.VecYoff),
-                Z = new FixedQ15_16(pBone.VecZoff)
-            };
-
-            lines.Append(pBoneOffset, boneOffset, Color4.PaleGreen);
-            lines.Append(boneOffset, 0.05f, Color4.Green);
-/*
-            var voff = gfx.VecOffset(lod, iBone); // offset into vertex array for bone
-
-            int blx = 0;
-            int bly = 0;
-            int blz = 0;
-            int bhx = 0;
-            int bhy = 0;
-            int bhz = 0;
-            
-            for(var ivert = voff; ivert < voff + bone.nVerts; ivert++)
-            {
-                var vert = gfx._lodPositions[lod][ivert];
-
-                blx = Math.Min(blx, vert.x);
-                bly = Math.Min(bly, vert.y);
-                blz = Math.Min(blz, vert.z);
-
-                bhx = Math.Max(bhx, vert.x);
-                bhy = Math.Max(bhy, vert.y);
-                bhz = Math.Max(bhz, vert.z);
-            }
-
-            var min = new Vector3(blx, bly, blz) / (1 << 8) - boneOffset;
-            var max = new Vector3(bhx, bhy, bhz) / (1 << 8) - boneOffset;
-
-            DrawBox(lines, min, max, Color4.DarkGreen);
-*/
+            lines.Append(pBonePosition, bonePosition, Color4.Green);
+            lines.Append(bonePosition, 0.05f, Color4.Green);
         }
+    }
+
+    private static bool TryGetKeyframe(GfxEdit gfxEdit, out FileKsa.KEYFRAME keyframe)
+    {
+        if (gfxEdit.LoadedKsa is null)
+        {
+            keyframe = default;
+            return false;
+        }
+
+        var ksaAnm = gfxEdit.LoadedKsa.GetAnimations();
+        var curAnmIdx = gfxEdit.CurrentAnimation;
+        var curAnm = ksaAnm[gfxEdit.CurrentAnimation];
+        var keyFrames = gfxEdit.LoadedKsa.GetKeyframes();
+
+        var keyframeIdx = 0;
+        for (var i = 0; i < curAnmIdx; i++)
+        {
+            keyframeIdx += ksaAnm[i].numKeyframes;
+        }
+
+        keyframeIdx += gfxEdit.CurrentKeyframe;
+        keyframe = keyFrames[keyframeIdx];
+        return true;
     }
 
     private static void DrawBox(LineBatch lines, Vector3 min, Vector3 max, Color4 color)
