@@ -419,42 +419,48 @@ public class SceneRenderPresenter : IDisposable
 
         var bones = gfx._lodSubObjects[lod];
 
-        var boneMatrices = new Matrix4[bones.Length];
-        boneMatrices[0] = Matrix4.Identity;
+        var boneTransforms = new Matrix4[bones.Length];
+        boneTransforms[0] = Matrix4.Identity;
 
         if (AnimateModel && TryGetKeyframe(gfxEdit, out var keyFrame))
         {
             float anmHeight = new FixedQ7_8(keyFrame.Height);
             ReadOnlySpan<byte> angles = MemoryMarshal.CreateSpan(ref keyFrame, 1).AsBytes().Slice(0, 15 * 4);
-            Skeleton.CalculateBoneTransforms(bones, angles, anmHeight, boneMatrices);
+            Skeleton.CalculateBoneTransforms(bones, angles, anmHeight, boneTransforms);
         }
         else
         {
-            for (var i = 0; i < boneMatrices.Length; i++)
+            for (var i = 0; i < boneTransforms.Length; i++)
             {
-                boneMatrices[i] = Matrix4.Identity;
+                boneTransforms[i] = Matrix4.Identity;
             }
         }
 
         if(DrawModelSkins)
-            DrawSkinnedMeshes(triangleDrawer, gfx, lod, camo, boneMatrices);
+            DrawSkinnedMeshes(triangleDrawer, gfx, lod, camo, boneTransforms);
 
         if(DrawModelCollision)
             DrawCollisionVolumes(triangleDrawer, dbg, gfx, lod);
 
         if (DrawModelSkeleton) 
-            DrawSkeleton(dbg._lineBatch, bones, boneMatrices);
+            DrawSkeleton(dbg._lineBatch, bones, boneTransforms);
     }
 
     private TimeSpan _anmTimeAccumulator = TimeSpan.Zero;
     private unsafe void DrawSkinnedMeshes(TriangleDrawer triangleDrawer, File3di gfx, int lod, CamoColor camo,
-        Matrix4[] boneMatrices)
+        Matrix4[] boneTransforms)
     {
         var header = gfx._lodHeaders[lod];
+
+        // Calculate the binding pose for each bone (move the mesh verts local to the bone)
+        Matrix4[] bindingPose = new Matrix4[gfx._lodSubObjects[lod].Length];
 
         for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
         {
             var bone = gfx._lodSubObjects[lod][iBone];
+
+            bindingPose[iBone] = Matrix4.CreateTranslation(-bone.ModelPosition);
+            Matrix4 boneMatrix = bindingPose[iBone] * boneTransforms[iBone] * Matrix4.Invert(bindingPose[iBone]);
 
             var foff = gfx.FaceOffset(lod, iBone); // offset into face array for bone
             var voff = gfx.VecOffset(lod, iBone); // offset into vertex array for bone
@@ -482,9 +488,8 @@ public class SceneRenderPresenter : IDisposable
                 
                 for (var iVertex = 0; iVertex < 3; iVertex++)
                 {
-                    var gfxPos = (Vector4)gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
-                    gfxPos.W = 1;
-                    var modelPos = (gfxPos * boneMatrices[iBone]).Xyz;
+                    Vector4 gfxPos = gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
+                    Vector3 modelPos = Vector3.TransformPosition(gfxPos.Xyz, boneMatrix);
 
                     var normal = ((Vector4)norms[face.NormalIdx[iVertex]]).Xyz;
 
@@ -566,18 +571,32 @@ public class SceneRenderPresenter : IDisposable
         }
     }
 
-    private static void DrawSkeleton(LineBatch lines, ModelSegmentMesh[] bones, Matrix4[] boneMatrices)
+    private static void DrawSkeleton(LineBatch lines, ModelSegmentMesh[] bones, Matrix4[] boneTransforms)
     {
+        // Calculate the binding pose for each bone (move the mesh verts local to the bone)
+        Matrix4[] bindingPose = new Matrix4[bones.Length];
+        for (var i = 0; i < bones.Length; i++)
+        {
+            var bone = bones[i];
+            bindingPose[i] = Matrix4.CreateTranslation(-bone.ModelPosition);
+        }
+
         for (var iBone = 0; iBone < bones.Length; iBone++)
         {
             var bone = bones[iBone];
             var pBone = bones[bone.parentBone];
 
-            var bonePosition = (new Vector4(bone.ModelPosition, 1) * boneMatrices[iBone]).Xyz;
-            var rotIndicator = (new Vector4(Vector3.UnitX * 0.075f + bonePosition, 1) * boneMatrices[iBone]).Xyz;
-            var pBonePosition = (new Vector4(pBone.ModelPosition, 1) * boneMatrices[bone.parentBone]).Xyz;
+            int boneIndex = iBone;
+            int pBoneIndex = bone.parentBone;
 
-            //lines.Append(bonePosition, (rotIndicator.Normalized()), Color4.LimeGreen);
+            Matrix4 boneMatrix = bindingPose[boneIndex] * boneTransforms[boneIndex] * Matrix4.Invert(bindingPose[boneIndex]);
+            Matrix4 pboneMatrix = bindingPose[pBoneIndex] * boneTransforms[pBoneIndex] * Matrix4.Invert(bindingPose[pBoneIndex]);
+
+            Vector3 bonePosition = Vector3.TransformPosition(bone.ModelPosition, boneMatrix);
+            Vector3 rotIndicator = Vector3.TransformPosition(bone.ModelPosition + Vector3.UnitX * 0.1f, boneMatrix);
+            Vector3 pBonePosition = Vector3.TransformPosition(pBone.ModelPosition, pboneMatrix);
+            
+            lines.Append(bonePosition, rotIndicator, Color4.LimeGreen);
             lines.Append(pBonePosition, bonePosition, Color4.Green);
             lines.Append(bonePosition, 0.05f, Color4.LightGreen);
         }
