@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using OpenTK.Mathematics;
 
 namespace GfxEditor;
 
@@ -81,24 +82,24 @@ public class FileKsa
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct KEYFRAME
     {
-        public VEC4 hips;
-        public VEC4 torso;
-        public VEC4 head;
-        public VEC4 upArmRight;
-        public VEC4 upArmLeft;
-        public VEC4 lowArmRight;
-        public VEC4 lowArmLeft;
-        public VEC4 handRight;
-        public VEC4 handLeft;
-        public VEC4 thighRight;
-        public VEC4 thighLeft;
-        public VEC4 legRight;
-        public VEC4 legLeft;
-        public VEC4 footRight;
-        public VEC4 footLeft;
-        private VEC4 unk0;
-        private VEC4 unk1;
-        public short height; // height offset from ground, 0=hips,-270=feet
+        public VEC4 Pelvis; // Root
+        public VEC4 Spine;
+        public VEC4 Head;
+        public VEC4 R_UpperArm;
+        public VEC4 L_UpperArm;
+        public VEC4 R_Forearm;
+        public VEC4 L_Forearm;
+        public VEC4 R_Hand;
+        public VEC4 L_Hand;
+        public VEC4 R_Thigh;
+        public VEC4 L_Thigh;
+        public VEC4 R_Calf;
+        public VEC4 L_Calf;
+        public VEC4 R_Foot;
+        public VEC4 L_Foot;
+        private int unk0;
+        private int unk1;
+        public short Height; // height offset from ground, 0=hips,-270=feet
         private short unk2;
         private fixed int unk3[4]; // u
     }

@@ -498,7 +498,7 @@ public class Window : GameWindow
         }
 
         var curFrame = _gfxEdit.CurrentKeyframe;
-        if(ImGui.SliderInt("TimeLine", ref curFrame, 0, frameCount))
+        if(ImGui.SliderInt("TimeLine", ref curFrame, 0, frameCount - 1))
         {
             _gfxEdit.CurrentKeyframe = curFrame;
         }

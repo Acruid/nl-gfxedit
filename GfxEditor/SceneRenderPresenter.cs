@@ -422,9 +422,9 @@ public class SceneRenderPresenter : IDisposable
         var boneMatrices = new Matrix4[bones.Length];
         boneMatrices[0] = Matrix4.Identity;
 
-        if (TryGetKeyframe(gfxEdit, out var keyFrame))
+        if (AnimateModel && TryGetKeyframe(gfxEdit, out var keyFrame))
         {
-            float anmHeight = new FixedQ7_8(keyFrame.height);
+            float anmHeight = new FixedQ7_8(keyFrame.Height);
             ReadOnlySpan<byte> angles = MemoryMarshal.CreateSpan(ref keyFrame, 1).AsBytes().Slice(0, 15 * 4);
             Skeleton.CalculateBoneTransforms(bones, angles, anmHeight, boneMatrices);
         }
@@ -573,11 +573,13 @@ public class SceneRenderPresenter : IDisposable
             var bone = bones[iBone];
             var pBone = bones[bone.parentBone];
 
-            var bonePosition = Vector3.TransformPosition(bone.ModelPosition, boneMatrices[iBone]);
-            var pBonePosition = Vector3.TransformPosition(pBone.ModelPosition, boneMatrices[bone.parentBone]);
+            var bonePosition = (new Vector4(bone.ModelPosition, 1) * boneMatrices[iBone]).Xyz;
+            var rotIndicator = (new Vector4(Vector3.UnitX * 0.075f + bonePosition, 1) * boneMatrices[iBone]).Xyz;
+            var pBonePosition = (new Vector4(pBone.ModelPosition, 1) * boneMatrices[bone.parentBone]).Xyz;
 
+            //lines.Append(bonePosition, (rotIndicator.Normalized()), Color4.LimeGreen);
             lines.Append(pBonePosition, bonePosition, Color4.Green);
-            lines.Append(bonePosition, 0.05f, Color4.Green);
+            lines.Append(bonePosition, 0.05f, Color4.LightGreen);
         }
     }
 
