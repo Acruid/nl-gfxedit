@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
@@ -452,15 +453,19 @@ public class SceneRenderPresenter : IDisposable
     {
         var header = gfx._lodHeaders[lod];
 
-        // Calculate the binding pose for each bone (move the mesh verts local to the bone)
-        Matrix4[] bindingPose = new Matrix4[gfx._lodSubObjects[lod].Length];
+        Matrix4[] boneMatrix = new Matrix4[gfx._lodSubObjects[lod].Length];
+        for (var iBone = 0; iBone < boneMatrix.Length; iBone++)
+        {
+            var bone = gfx._lodSubObjects[lod][iBone];
+
+            // Calculate the binding pose for each bone (move the mesh verts local to the bone)
+            Matrix4 bindingPose = Matrix4.CreateTranslation(-bone.ModelPosition);
+            boneMatrix[iBone] = bindingPose * boneTransforms[iBone] * Matrix4.Invert(bindingPose);
+        }
 
         for (var iBone = 0; iBone < gfx._lodSubObjects[lod].Length; iBone++)
         {
             var bone = gfx._lodSubObjects[lod][iBone];
-
-            bindingPose[iBone] = Matrix4.CreateTranslation(-bone.ModelPosition);
-            Matrix4 boneMatrix = bindingPose[iBone] * boneTransforms[iBone] * Matrix4.Invert(bindingPose[iBone]);
 
             var foff = gfx.FaceOffset(lod, iBone); // offset into face array for bone
             var voff = gfx.VecOffset(lod, iBone); // offset into vertex array for bone
@@ -488,8 +493,9 @@ public class SceneRenderPresenter : IDisposable
                 
                 for (var iVertex = 0; iVertex < 3; iVertex++)
                 {
-                    Vector4 gfxPos = gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
-                    Vector3 modelPos = Vector3.TransformPosition(gfxPos.Xyz, boneMatrix);
+                    VECTOR4 gfxPos = gfx._lodPositions[lod][face.PositonIdx[iVertex] + voff];
+                    var boneIdx = gfxPos.w;
+                    Vector3 modelPos = Vector3.TransformPosition(((Vector4)gfxPos).Xyz, boneMatrix[boneIdx]);
 
                     var normal = ((Vector4)norms[face.NormalIdx[iVertex]]).Xyz;
 

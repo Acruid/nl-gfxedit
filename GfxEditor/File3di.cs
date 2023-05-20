@@ -435,9 +435,9 @@ public sealed class File3di
         private int _diffZoff; //v,w VecZOff - parentBone.VecZoff
 
         //v,r if(lodheader.Flags & 1)foreach vert in group, vec.x -= (VecXoff >> 8)
-        public int VecXoff; //v,r
-        public int VecYoff; //v,r same as above for y
-        public int VecZoff; //v,r same as above for z
+        public int VecXoff; //v,r X position of bone in model space.
+        public int VecYoff; //v,r Y position of bone in model space.
+        public int VecZoff; //v,r Z position of bone in model space.
 
         private fixed int GAP_1[12];
         
