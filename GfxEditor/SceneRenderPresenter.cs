@@ -475,7 +475,20 @@ public class SceneRenderPresenter : IDisposable
                 var face = gfx._lodFaces[lod][i + foff];
                 var material = gfx._lodMaterials[lod][face.MaterialIndex];
                 var texIndex = material.TexIndex(camo);
-                
+
+                bool isTransparent;
+                if (texIndex >= gfx._textures.Count) // Apparently some Stock (FCIV3) 3DIs are broken.
+                {
+                    texIndex = 0;
+                    isTransparent = false;
+                }
+                else
+                {
+                    var texture = gfx._textures[texIndex];
+                    isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
+                    texIndex++; // first texture is dbg white in the array
+                }
+
                 bool animated = (material.Transparentflag & 0b0100_0000) != 0;
                 if(animated)
                 {
@@ -487,9 +500,7 @@ public class SceneRenderPresenter : IDisposable
                     texIndex = (byte)(frames % nFrames);
                 }
 
-                var texture = gfx._textures[texIndex];
                 var norms = gfx._lodNormals[lod];
-                var isTransparent = texture.bmSize / (texture.bmWidth * texture.bmHeight) == 2;
                 
                 for (var iVertex = 0; iVertex < 3; iVertex++)
                 {
@@ -505,7 +516,7 @@ public class SceneRenderPresenter : IDisposable
                     color.A = isTransparent ? 0.99f : 1; //TODO: There needs to be a better way to signal this, check the tex?
 
                     var vertex = new TriangleDrawer.VertexTex(modelPos, color, normal,
-                        new Vector3(texCoords.X, texCoords.Y, texIndex + 1));
+                        new Vector3(texCoords.X, texCoords.Y, texIndex));
                     triangleDrawer.Append(in vertex);
                 }
             }
