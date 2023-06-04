@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using OpenTK.Mathematics;
+using static GfxEditor.File3di;
 
 namespace GfxEditor;
 
@@ -99,7 +100,7 @@ public class FileKsa
         public VEC4 L_Foot;
         private int unk0;
         private int unk1;
-        public short Height; // height offset from ground, 0=hips,-270=feet
+        public FixedQ7_8 Height; // height offset from ground, 0=hips,-270=feet
         private short unk2;
         private fixed int unk3[4]; // u
     }

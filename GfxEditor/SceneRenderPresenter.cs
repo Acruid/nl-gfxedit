@@ -425,7 +425,7 @@ public class SceneRenderPresenter : IDisposable
 
         if (AnimateModel && TryGetKeyframe(gfxEdit, out var keyFrame))
         {
-            float anmHeight = new FixedQ7_8(keyFrame.Height);
+            float anmHeight = keyFrame.Height;
             ReadOnlySpan<byte> angles = MemoryMarshal.CreateSpan(ref keyFrame, 1).AsBytes().Slice(0, 15 * 4);
             Skeleton.CalculateBoneTransforms(bones, angles, anmHeight, boneTransforms);
         }
